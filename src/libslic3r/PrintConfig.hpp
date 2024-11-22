@@ -689,6 +689,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionBool,                 extra_perimeters))
     ((ConfigOptionBool,                 extra_perimeters_on_overhangs))
     ((ConfigOptionFloat,                fill_angle))
+    //ldx[fill_angles] add  zhe definition of zhe data type for fill_angles 
+    ((ConfigOptionString,               fill_angles))
     ((ConfigOptionPercent,              fill_density))
     ((ConfigOptionEnum<InfillPattern>,  fill_pattern))
     ((ConfigOptionEnum<FuzzySkinType>,  fuzzy_skin))

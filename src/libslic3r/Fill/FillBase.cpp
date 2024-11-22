@@ -141,7 +141,7 @@ coord_t Fill::_adjust_solid_spacing(const coord_t width, const coord_t distance)
         distance_new = coord_t(floor((coordf_t(distance) * factor_max + 0.5)));
     return distance_new;
 }
-
+//ldx[fill_angles] The function has been modified, so the commutation angles using this function are all filled with the parameter 'fill_angles'
 // Returns orientation of the infill and the reference point of the infill pattern.
 // For a normal print, the reference point is the center of a bounding box of the STL.
 std::pair<float, Point> Fill::_infill_direction(const Surface *surface) const
@@ -177,14 +177,15 @@ std::pair<float, Point> Fill::_infill_direction(const Surface *surface) const
         printf("Filling bridge with angle %f\n", surface->bridge_angle);
 #endif /* SLIC3R_DEBUG */
         out_angle = float(surface->bridge_angle);
+        out_angle += float(M_PI / 2.);
     } else if (this->layer_id != size_t(-1)) {
         // alternate fill direction
-        out_angle += this->_layer_angle(this->layer_id / surface->thickness_layers);
+       // out_angle += this->_layer_angle(this->layer_id / surface->thickness_layers);
     } else {
 //    	printf("Layer_ID undefined!\n");
     }
 
-    out_angle += float(M_PI/2.);
+    //out_angle += float(M_PI/2.);
     return std::pair<float, Point>(out_angle, out_shift);
 }
 

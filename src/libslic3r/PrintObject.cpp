@@ -822,7 +822,9 @@ bool PrintObject::invalidate_state_by_config_options(
                opt_key == "top_fill_pattern"
             || opt_key == "bottom_fill_pattern"
             || opt_key == "external_fill_link_max_length"
-            || opt_key == "fill_angle"
+            || opt_key == "fill_angle" 
+            //ldx[fill_angles] add zhe judge dont know zhe meaning
+            || opt_key == "fill_angles"
             || opt_key == "infill_anchor"
             || opt_key == "infill_anchor_max"
             || opt_key == "top_infill_extrusion_width"

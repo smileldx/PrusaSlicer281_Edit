@@ -69,6 +69,8 @@ struct SurfaceFillParams
 //    coordf_t    	overlap = 0.;
     // Angle as provided by the region config, in radians.
     float       	angle = 0.f;
+	//ldx[fill_angles] add angles  field used by change direction
+    std::vector<float> angles;
     // Is bridging used for this fill? Bridging parameters may be used even if this->flow.bridge() is not set.
     bool 			bridge;
     // Non-negative for a bridge.
@@ -149,8 +151,25 @@ struct SurfaceFill {
 static inline bool fill_type_monotonic(InfillPattern pattern)
 {
 	return pattern == ipMonotonic || pattern == ipMonotonicLines;
-}
+}//ldx[fill_angles] zhe method Used for parameter conversion
+std::vector<float> parseStringToFloatVector(const std::string &input) {
+    std::vector<float> result;
+    std::stringstream ss(input);
+    std::string segment;
 
+    while (std::getline(ss, segment, ',')) {
+        try {
+            float value = std::stof(segment);
+            result.push_back(value);
+        } catch (const std::exception &e) {
+            // 处理转换失败的情况
+            std::cerr << "Error converting string to float: " << e.what() << std::endl;
+            // 可以选择忽略错误或者抛出异常
+        }
+    }
+
+    return result;
+}
 std::vector<SurfaceFill> group_fills(const Layer &layer)
 {
 	std::vector<SurfaceFill> surface_fills;
@@ -191,6 +210,10 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
 							ExtrusionRole::InternalInfill);
 		        params.bridge_angle = float(surface.bridge_angle);
 		        params.angle 		= float(Geometry::deg2rad(region_config.fill_angle.value));
+                //ldx[fill_angles] add string to vector<float>
+				if (!region_config.fill_angles.empty()) {
+                    params.angles = parseStringToFloatVector(region_config.fill_angles);
+				}
 		        
 		        // Calculate the actual flow we'll be using for this infill.
 		        params.bridge = is_bridge || Fill::use_bridge_flow(params.pattern);
@@ -492,7 +515,15 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
 		// from raft.
         f->layer_id = this->id() - first_object_layer_id;
         f->z 		= this->print_z;
-        f->angle 	= surface_fill.params.angle;
+		//ldx[fill_angles] The updated code converts the angle parameter to radians 
+        int len = surface_fill.params.angles.size();
+        if (len > 0) 
+		{
+            f->angle = float(Geometry::deg2rad(surface_fill.params.angles[f->layer_id % len]));
+		} else {
+            f->angle = surface_fill.params.angle;
+		}
+        
         f->adapt_fill_octree   = (surface_fill.params.pattern == ipSupportCubic) ? support_fill_octree : adaptive_fill_octree;
         f->print_config        = &this->object()->print()->config();
         f->print_object_config = &this->object()->config();

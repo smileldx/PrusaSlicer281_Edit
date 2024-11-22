@@ -1435,6 +1435,14 @@ void PrintConfigDef::init_fff_params()
     def->max = 360;
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloat(45));
+    //ldx[fill_angles] add fill_angles used by load control
+    def = this->add("fill_angles", coString);
+    def->label = L("Fill angles");
+    // def->category = L("Infill");
+    def->tooltip = L("change direction for example [0,0,0,90,90,90]");
+    def->sidetext = L("°");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionString());
 
     def = this->add("fill_density", coPercent);
     def->gui_flags = "show_value";
