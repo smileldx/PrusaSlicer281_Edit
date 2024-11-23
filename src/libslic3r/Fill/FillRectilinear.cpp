@@ -2775,7 +2775,11 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
     rotate_vector.first += angleBase;
 
     assert(params.density > 0.0001f && params.density <= 1.f);
-    coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
+    //ldx[line_spacing] Modify the value source of the field
+    //coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
+    coord_t line_spacing = coord_t(scale_(this->line_spacing));
+    if (line_spacing==0)
+        line_spacing = coord_t(scale_(this->spacing) / params.density);
 
     // On the polygons of poly_with_offset, the infill lines will be connected.
     ExPolygonWithOffset poly_with_offset(

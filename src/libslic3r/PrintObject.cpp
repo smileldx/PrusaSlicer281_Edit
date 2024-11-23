@@ -825,6 +825,8 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "fill_angle" 
             //ldx[fill_angles] add zhe judge dont know zhe meaning
             || opt_key == "fill_angles"
+            //ldx[line_spacing] add zhe judge dont know zhe meaning
+            || opt_key == "line_spacing"
             || opt_key == "infill_anchor"
             || opt_key == "infill_anchor_max"
             || opt_key == "top_infill_extrusion_width"

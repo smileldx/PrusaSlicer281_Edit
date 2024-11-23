@@ -71,6 +71,8 @@ struct SurfaceFillParams
     float       	angle = 0.f;
 	//ldx[fill_angles] add angles  field used by change direction
     std::vector<float> angles;
+    // ldx[line_spacing] add line_spacing  fields are used to fill in the spacing between lines
+    float line_spacing = 0.f;
     // Is bridging used for this fill? Bridging parameters may be used even if this->flow.bridge() is not set.
     bool 			bridge;
     // Non-negative for a bridge.
@@ -214,7 +216,8 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
 				if (!region_config.fill_angles.empty()) {
                     params.angles = parseStringToFloatVector(region_config.fill_angles);
 				}
-		        
+                // ldx[line_spacing] transfer value
+                params.line_spacing = region_config.line_spacing.value;
 		        // Calculate the actual flow we'll be using for this infill.
 		        params.bridge = is_bridge || Fill::use_bridge_flow(params.pattern);
 				params.flow   = params.bridge ?
@@ -523,6 +526,8 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
 		} else {
             f->angle = surface_fill.params.angle;
 		}
+		//ldx[line_spacing] Passing parameters
+        f->line_spacing = surface_fill.params.line_spacing;
         
         f->adapt_fill_octree   = (surface_fill.params.pattern == ipSupportCubic) ? support_fill_octree : adaptive_fill_octree;
         f->print_config        = &this->object()->print()->config();

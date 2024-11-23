@@ -177,7 +177,6 @@ std::pair<float, Point> Fill::_infill_direction(const Surface *surface) const
         printf("Filling bridge with angle %f\n", surface->bridge_angle);
 #endif /* SLIC3R_DEBUG */
         out_angle = float(surface->bridge_angle);
-        out_angle += float(M_PI / 2.);
     } else if (this->layer_id != size_t(-1)) {
         // alternate fill direction
        // out_angle += this->_layer_angle(this->layer_id / surface->thickness_layers);
@@ -185,7 +184,7 @@ std::pair<float, Point> Fill::_infill_direction(const Surface *surface) const
 //    	printf("Layer_ID undefined!\n");
     }
 
-    //out_angle += float(M_PI/2.);
+    out_angle += float(M_PI/2.);
     return std::pair<float, Point>(out_angle, out_shift);
 }
 

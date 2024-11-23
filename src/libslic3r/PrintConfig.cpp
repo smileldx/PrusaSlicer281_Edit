@@ -1443,6 +1443,16 @@ void PrintConfigDef::init_fff_params()
     def->sidetext = L("°");
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionString());
+    // ldx[line_spacing] add line_spacing used by load control
+    def = this->add("line_spacing", coFloat);
+    def->label = L("Line spacing");
+    // def->category = L("Infill");
+    def->tooltip = L("Line spacing");
+    def->sidetext = L("mm");
+    def->mode = comAdvanced;
+    def->min = 0.;
+    def->max = 100.;
+    def->set_default_value(new ConfigOptionFloat(1));
 
     def = this->add("fill_density", coPercent);
     def->gui_flags = "show_value";

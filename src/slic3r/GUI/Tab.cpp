@@ -1499,7 +1499,8 @@ void TabPrint::build()
         optgroup->append_single_option_line("fill_angle", category_path + "fill-angle");
         //ldx[fill_angles] add fill_angles used by load control
         optgroup->append_single_option_line("fill_angles", category_path + "fill-angles");
-        
+        //ldx[line_spacing] add line_spacing used by load control
+        optgroup->append_single_option_line("line_spacing", category_path + "line-spacing");
         optgroup->append_single_option_line("solid_infill_below_area", category_path + "solid-infill-threshold-area");
         optgroup->append_single_option_line("bridge_angle");
         optgroup->append_single_option_line("only_retract_when_crossing_perimeters");

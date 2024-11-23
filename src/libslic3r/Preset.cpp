@@ -461,6 +461,8 @@ static std::vector<std::string> s_Preset_print_options {
     "fill_angle",
     //ldx[fill_angles] add fill_angles Preset_print_options
     "fill_angles",
+    //ldx[line_spacing] add line_spacing Preset_print_options
+    "line_spacing",
     "bridge_angle",
     "solid_infill_below_area", "only_retract_when_crossing_perimeters", "infill_first",
     "ironing", "ironing_type", "ironing_flowrate", "ironing_speed", "ironing_spacing",
