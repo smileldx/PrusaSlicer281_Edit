@@ -1454,6 +1454,17 @@ void PrintConfigDef::init_fff_params()
     def->max = 100.;
     def->set_default_value(new ConfigOptionFloat(1));
 
+    // ldx[flow] add line_spacing used by load control
+    def = this->add("fill_flow", coFloat);
+    def->label = L("Fill flow");
+    // def->category = L("Infill");
+    def->tooltip = L("Fill flow");
+    def->sidetext = L("mm³");
+    def->mode = comAdvanced;
+    def->min = 0.5;
+    def->max = 30.;
+    def->set_default_value(new ConfigOptionFloat(13));
+
     def = this->add("fill_density", coPercent);
     def->gui_flags = "show_value";
     def->label = L("Fill density");

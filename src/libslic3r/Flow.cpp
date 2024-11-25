@@ -143,7 +143,11 @@ Flow Flow::new_from_config_width(FlowRole role, const ConfigOptionFloatOrPercent
     
     return Flow(w, height, rounded_rectangle_extrusion_spacing(w, height), nozzle_diameter, false);
 }
-
+//ldx[fill_flow] add new mothed for Create new flow
+Flow Flow::new_from_config_flow(const ConfigOptionFloatOrPercent &width,  float height,double spacing, float nozzle_diameter)
+{
+    return Flow(width.value, height, spacing, nozzle_diameter, false);
+}
 // Adjust extrusion flow for new extrusion line spacing, maintaining the old spacing between extrusions.
 Flow Flow::with_spacing(float new_spacing) const
 {

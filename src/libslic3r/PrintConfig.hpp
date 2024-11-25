@@ -693,6 +693,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionString,               fill_angles))
     // ldx[line_spacing] add  zhe definition of zhe data type for line_spacing 
     ((ConfigOptionFloat,                line_spacing))
+    // ldx[fill_flow] add  zhe definition of zhe data type for fill_flow
+    ((ConfigOptionFloat,                fill_flow))
     ((ConfigOptionPercent,              fill_density))
     ((ConfigOptionEnum<InfillPattern>,  fill_pattern))
     ((ConfigOptionEnum<FuzzySkinType>,  fuzzy_skin))
