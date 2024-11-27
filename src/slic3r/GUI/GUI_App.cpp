@@ -834,20 +834,20 @@ void GUI_App::post_init()
             // Configuration is not compatible and reconfigure was refused by the user. Application is closing.
             return;
 #endif
-        CallAfter([this] {
-            // preset_updater->sync downloads profile updates and than via event checks updates and incompatible presets. We need to run it on startup.
-            // start before cw so it is canceled by cw if needed?
-            this->preset_updater->sync(preset_bundle, this, std::move(plater()->get_preset_archive_database()->get_selected_archive_repositories()));
-            bool cw_showed = this->config_wizard_startup();
-            if (! cw_showed) {
-                // The CallAfter is needed as well, without it, GL extensions did not show.
-                // Also, we only want to show this when the wizard does not, so the new user
-                // sees something else than "we want something" on the first start.
-                show_send_system_info_dialog_if_needed();   
-            }  
-            // app version check is asynchronous and triggers blocking dialog window, better call it last
-            this->app_version_check(false);
-        });
+        //CallAfter([this] {
+        //    // preset_updater->sync downloads profile updates and than via event checks updates and incompatible presets. We need to run it on startup.
+        //    // start before cw so it is canceled by cw if needed?
+        //    this->preset_updater->sync(preset_bundle, this, std::move(plater()->get_preset_archive_database()->get_selected_archive_repositories()));
+        //    bool cw_showed = this->config_wizard_startup();
+        //    if (! cw_showed) {
+        //        // The CallAfter is needed as well, without it, GL extensions did not show.
+        //        // Also, we only want to show this when the wizard does not, so the new user
+        //        // sees something else than "we want something" on the first start.
+        //        show_send_system_info_dialog_if_needed();   
+        //    }  
+        //    // app version check is asynchronous and triggers blocking dialog window, better call it last
+        //    this->app_version_check(false);
+        //});
     }
 
     // Set PrusaSlicer version and save to PrusaSlicer.ini or PrusaSlicerGcodeViewer.ini.
@@ -3521,7 +3521,7 @@ bool GUI_App::config_wizard_startup()
 
 bool GUI_App::check_updates(const bool invoked_by_user)
 {	
-     if (invoked_by_user) {
+       if (invoked_by_user) {
         // do preset_updater sync so if user runs slicer for a long time, check for updates actually delivers updates.
         // for preset_updater sync we need to sync archive database first
         plater()->get_preset_archive_database()->sync_blocking();
