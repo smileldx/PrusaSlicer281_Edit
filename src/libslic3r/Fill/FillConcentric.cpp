@@ -37,8 +37,9 @@ void FillConcentric::_fill_surface_single(
     BoundingBox bounding_box = expolygon.contour.bounding_box();
 
     coord_t min_spacing = scaled<coord_t>(this->spacing);
-    coord_t distance    = coord_t(min_spacing / params.density);
-
+    //ldx[line_spacing] for Concentric
+    //coord_t distance    = coord_t(min_spacing / params.density);
+    coord_t distance = coord_t(scale_(this->line_spacing));
     if (params.density > 0.9999f && !params.dont_adjust) {
         distance      = Slic3r::FillConcentric::_adjust_solid_spacing(bounding_box.size()(0), distance);
         this->spacing = unscale<double>(distance);

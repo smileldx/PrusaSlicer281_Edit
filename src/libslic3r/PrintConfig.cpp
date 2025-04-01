@@ -590,7 +590,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Number of solid layers to generate on bottom surfaces.");
     def->full_label = L("Bottom solid layers");
     def->min = 0;
-    def->set_default_value(new ConfigOptionInt(3));
+    def->set_default_value(new ConfigOptionInt(0));
 
     def = this->add("bottom_solid_min_thickness", coFloat);
     def->label = L_CONTEXT("Bottom", "Layers");
@@ -1461,8 +1461,8 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Fill flow");
     def->sidetext = L("mm³");
     def->mode = comAdvanced;
-    def->min = 0.5;
-    def->max = 30.;
+    def->min = 0.09;
+    def->max = 30.1;
     def->set_default_value(new ConfigOptionFloat(13));
 
     def = this->add("fill_density", coPercent);
@@ -1497,15 +1497,16 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Fill pattern for general low-density infill.");
     def->set_enum<InfillPattern>({
         { "rectilinear",        L("Rectilinear") },
-        { "alignedrectilinear", L("Aligned Rectilinear") },
+       // { "alignedrectilinear", L("Aligned Rectilinear") },
         { "grid",               L("Grid") }, 
         { "triangles",          L("Triangles")},
         { "stars",              L("Stars")},
-        { "cubic",              L("Cubic")},
+        //{ "cubic",              L("Cubic")},
         { "line",               L("Line")},
         { "concentric",         L("Concentric")},
-        { "honeycomb",          L("Honeycomb")},
-        { "3dhoneycomb",        L("3D Honeycomb")},
+        { "honeycomb",          L("Honeycomb")}
+        //,
+       /* { "3dhoneycomb",        L("3D Honeycomb")},
         { "gyroid",             L("Gyroid")},
         { "hilbertcurve",       L("Hilbert Curve")},
         { "archimedeanchords",  L("Archimedean Chords")},
@@ -1513,7 +1514,7 @@ void PrintConfigDef::init_fff_params()
         { "adaptivecubic",      L("Adaptive Cubic")},
         { "supportcubic",       L("Support Cubic")},
         { "lightning",          L("Lightning")},
-        { "zigzag",             L("Zig Zag")}
+        { "zigzag",             L("Zig Zag")}*/
     });
     def->set_default_value(new ConfigOptionEnum<InfillPattern>(ipStars));
 
@@ -2336,7 +2337,7 @@ void PrintConfigDef::init_fff_params()
                      "Set zero to disable acceleration control for perimeters.");
     def->sidetext = L("mm/s²");
     def->mode = comExpert;
-    def->set_default_value(new ConfigOptionFloat(0));
+    def->set_default_value(new ConfigOptionFloat(3));
 
     def = this->add("external_perimeter_acceleration", coFloat);
     def->label = L("External perimeters");
@@ -2390,7 +2391,7 @@ void PrintConfigDef::init_fff_params()
     def->aliases = { "perimeter_offsets" };
     def->min = 0;
     def->max = 10000;
-    def->set_default_value(new ConfigOptionInt(3));
+    def->set_default_value(new ConfigOptionInt(0));
 
     def = this->add("post_process", coStrings);
     def->label = L("Post-processing scripts");
@@ -2732,7 +2733,7 @@ void PrintConfigDef::init_fff_params()
                    "to disable skirt completely.");
     def->min = 0;
     def->mode = comAdvanced;
-    def->set_default_value(new ConfigOptionInt(1));
+    def->set_default_value(new ConfigOptionInt(0));
 
     def = this->add("slowdown_below_layer_time", coInts);
     def->label = L("Slow down if layer print time is below");
@@ -3409,7 +3410,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Number of solid layers to generate on top surfaces.");
     def->full_label = L("Top solid layers");
     def->min = 0;
-    def->set_default_value(new ConfigOptionInt(3));
+    def->set_default_value(new ConfigOptionInt(0));
 
     def = this->add("top_solid_min_thickness", coFloat);
     def->label = L_CONTEXT("Top", "Layers");

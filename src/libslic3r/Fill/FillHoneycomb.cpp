@@ -33,7 +33,9 @@ void FillHoneycomb::_fill_surface_single(
         it_m = this->cache.insert(it_m, std::pair<CacheID, CacheData>(cache_id, CacheData()));
         CacheData &m        = it_m->second;
         coord_t min_spacing = coord_t(scale_(this->spacing));
-        m.distance          = coord_t(min_spacing / params.density);
+        //ldx[line_spacing] for Honeycomb
+        /*m.distance          = coord_t(min_spacing / params.density);*/
+        m.distance = coord_t(scale_(this->line_spacing));
         m.hex_side          = coord_t(m.distance / (sqrt(3)/2));
         m.hex_width         = m.distance * 2; // $m->{hex_width} == $m->{hex_side} * sqrt(3);
         coord_t hex_height  = m.hex_side * 2;

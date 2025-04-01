@@ -2971,7 +2971,9 @@ bool FillRectilinear::fill_surface_by_multilines(const Surface *surface, FillPar
 
     Polylines fill_lines;
     coord_t line_width   = coord_t(scale_(this->spacing));
-    coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
+    //ldx[line_spacing] for grid ,triangles, stars,
+    //coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
+    coord_t line_spacing = coord_t(scale_(this->line_spacing));
     std::pair<float, Point> rotate_vector = this->_infill_direction(surface);
     for (const SweepParams &sweep : sweep_params) {
         // Rotate polygons so that we can work with vertical lines here
@@ -3045,7 +3047,11 @@ Polylines FillStars::fill_surface(const Surface *surface, const FillParams &para
     Polylines polylines_out;
     if (! this->fill_surface_by_multilines(
             surface, params,
-            { { 0.f, 0.f }, { float(M_PI / 3.), 0.f }, { float(2. * M_PI / 3.), float((3./2.) * this->spacing / params.density) } },
+            {{0.f, 0.f},
+             {float(M_PI / 3.), 0.f},
+             //ldx[line_spacing] for Stars
+             {float(2. * M_PI / 3.), float((3. / 2.) * this->line_spacing)}},
+           // { { 0.f, 0.f }, { float(M_PI / 3.), 0.f }, { float(2. * M_PI / 3.), float((3./2.) * this->spacing / params.density) } },
             polylines_out))
         BOOST_LOG_TRIVIAL(error) << "FillStars::fill_surface() failed to fill a region.";
     return polylines_out;
