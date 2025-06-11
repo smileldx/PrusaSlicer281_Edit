@@ -60,15 +60,21 @@ void ConfigManipulation::update_print_fff_config(DynamicPrintConfig* config, con
         apply(config, &new_conf);
         is_msg_dlg_already_exist = false;
     }
-
+    // ldx[first_layer_height] update:reset to default value as0.0001 when input value is not valid
     if (config->option<ConfigOptionFloatOrPercent>("first_layer_height")->value < EPSILON)
     {
-        const wxString msg_text = _(L("First layer height is not valid.\n\nThe first layer height will be reset to 0.01."));
+        /*const wxString msg_text = _(L("First layer height is not valid.\n\nThe first layer height will be reset to 0.01."));
         MessageDialog dialog(m_msg_dlg_parent, msg_text, _(L("First layer height")), wxICON_WARNING | wxOK);
         DynamicPrintConfig new_conf = *config;
         is_msg_dlg_already_exist = true;
         dialog.ShowModal();
         new_conf.set_key_value("first_layer_height", new ConfigOptionFloatOrPercent(0.01, false));
+        apply(config, &new_conf);
+        is_msg_dlg_already_exist = false;*/
+
+         DynamicPrintConfig new_conf = *config;
+        is_msg_dlg_already_exist = true;
+        new_conf.set_key_value("first_layer_height", new ConfigOptionFloatOrPercent(0.0001, false));
         apply(config, &new_conf);
         is_msg_dlg_already_exist = false;
     }
