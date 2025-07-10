@@ -823,12 +823,14 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "bottom_fill_pattern"
             || opt_key == "external_fill_link_max_length"
             || opt_key == "fill_angle" 
-            //ldx[fill_angles] add zhe judge dont know zhe meaning
+            //ldx[fill_angles] add (Multi layer filling angle)
             || opt_key == "fill_angles"
-            //ldx[line_spacing] add zhe judge dont know zhe meaning
+            //ldx[line_spacing] add (Fill line spacing)
             || opt_key == "line_spacing"
              //ldx[flow] add zhe judge dont know zhe meaning
-            || opt_key == "flow"
+            || opt_key == "fill_flow"
+            //ldx[flow] add zhe judge dont know zhe meaning
+            || opt_key == "forced_reversal"
             || opt_key == "infill_anchor"
             || opt_key == "infill_anchor_max"
             || opt_key == "top_infill_extrusion_width"

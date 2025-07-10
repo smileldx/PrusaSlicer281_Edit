@@ -73,6 +73,8 @@ struct SurfaceFillParams
     std::vector<float> angles;
     // ldx[line_spacing] add line_spacing  fields are used to fill in the spacing between lines
     float line_spacing = 0.f;
+    // ldx[forced_reversal] add forced_reversal  fields are used to( Suitable for filling lines of  rectangle in Arctic Pro)
+    bool forced_reversal = false;
     // Is bridging used for this fill? Bridging parameters may be used even if this->flow.bridge() is not set.
     bool 			bridge;
     // Non-negative for a bridge.
@@ -218,6 +220,8 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
 				}
                 // ldx[line_spacing] transfer value
                 params.line_spacing = region_config.line_spacing.value;
+                // ldx[forced_reversal] transfer value
+                params.forced_reversal = region_config.forced_reversal.value;
 		        // Calculate the actual flow we'll be using for this infill.
 		        params.bridge = is_bridge || Fill::use_bridge_flow(params.pattern);
 				params.flow   = params.bridge ?
@@ -520,9 +524,15 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
         f->z 		= this->print_z;
 		//ldx[fill_angles] The updated code converts the angle parameter to radians 
         int len = surface_fill.params.angles.size();
+        bool force_reversal =false;
         if (len > 0) 
 		{
-            f->angle = float(Geometry::deg2rad(surface_fill.params.angles[f->layer_id % len]));
+            if (surface_fill.params.forced_reversal && len > 1) {
+			   force_reversal = (f->layer_id /len)%2>0;
+			}
+            int angle_index = f->layer_id % len;
+            float temp_angle = surface_fill.params.angles[angle_index];
+            f->angle = float(Geometry::deg2rad(temp_angle));
 		} else {
             f->angle = surface_fill.params.angle;
 		}
@@ -583,7 +593,8 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
                 if (params.use_arachne)
                     thick_polylines = f->fill_surface_arachne(&surface_fill.surface, params);
                 else
-				    polylines = f->fill_surface(&surface_fill.surface, params);
+                    polylines =
+                        f->fill_surface(&surface_fill.surface, params,force_reversal);
 			} catch (InfillFailedException &) {
 			}
             if (!polylines.empty() || !thick_polylines.empty()) {

@@ -1465,6 +1465,14 @@ void PrintConfigDef::init_fff_params()
     def->max = 30.1;
     def->set_default_value(new ConfigOptionFloat(13));
 
+    // ldx[forced_reversal] add forced_reversal used by load control
+    def = this->add("forced_reversal", coBool);
+    def->label = L("Forced reversal");
+    def->category = L("Forced reversal");
+    def->tooltip = L("Enables Suitable for filling lines of  rectangle in Arctic Pro ");
+    def->mode = comAdvanced;
+    def->set_default_value(new ConfigOptionBool(false));
+
     def = this->add("fill_density", coPercent);
     def->gui_flags = "show_value";
     def->label = L("Fill density");
@@ -1497,16 +1505,16 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Fill pattern for general low-density infill.");
     def->set_enum<InfillPattern>({
         { "rectilinear",        L("Rectilinear") },
-       // { "alignedrectilinear", L("Aligned Rectilinear") },
+        { "alignedrectilinear", L("Aligned Rectilinear") },
         { "grid",               L("Grid") }, 
         { "triangles",          L("Triangles")},
         { "stars",              L("Stars")},
-        //{ "cubic",              L("Cubic")},
+        { "cubic",              L("Cubic")},
         { "line",               L("Line")},
         { "concentric",         L("Concentric")},
         { "honeycomb",          L("Honeycomb")}
-        //,
-       /* { "3dhoneycomb",        L("3D Honeycomb")},
+        ,
+        { "3dhoneycomb",        L("3D Honeycomb")},
         { "gyroid",             L("Gyroid")},
         { "hilbertcurve",       L("Hilbert Curve")},
         { "archimedeanchords",  L("Archimedean Chords")},
@@ -1514,7 +1522,7 @@ void PrintConfigDef::init_fff_params()
         { "adaptivecubic",      L("Adaptive Cubic")},
         { "supportcubic",       L("Support Cubic")},
         { "lightning",          L("Lightning")},
-        { "zigzag",             L("Zig Zag")}*/
+        { "zigzag",             L("Zig Zag")}
     });
     def->set_default_value(new ConfigOptionEnum<InfillPattern>(ipStars));
 

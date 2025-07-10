@@ -97,19 +97,21 @@ bool Fill::use_bridge_flow(const InfillPattern type)
 	return cached[type] != 0;
 }
 
-Polylines Fill::fill_surface(const Surface *surface, const FillParams &params)
+Polylines Fill::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     // Perform offset.
     Slic3r::ExPolygons expp = offset_ex(surface->expolygon, float(scale_(this->overlap - 0.5 * this->spacing)));
     // Create the infills for each of the regions.
     Polylines polylines_out;
     for (ExPolygon &expoly : expp)
-        _fill_surface_single(params, surface->thickness_layers, _infill_direction(surface), std::move(expoly), polylines_out);
+        _fill_surface_single(
+            params, surface->thickness_layers, _infill_direction(surface), std::move(expoly), polylines_out);
     return polylines_out;
 }
 
-ThickPolylines Fill::fill_surface_arachne(const Surface *surface, const FillParams &params)
-{
+ThickPolylines Fill::fill_surface_arachne(
+    const Surface *surface, const FillParams &params
+) {
     // Perform offset.
     Slic3r::ExPolygons expp = offset_ex(surface->expolygon, float(scale_(this->overlap - 0.5 * this->spacing)));
     // Create the infills for each of the regions.
@@ -184,7 +186,7 @@ std::pair<float, Point> Fill::_infill_direction(const Surface *surface) const
 //    	printf("Layer_ID undefined!\n");
     }
 
-    out_angle += float(M_PI/2.);
+    //out_angle += float(M_PI/2.);
     return std::pair<float, Point>(out_angle, out_shift);
 }
 

@@ -695,6 +695,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionFloat,                line_spacing))
     // ldx[fill_flow] add  zhe definition of zhe data type for fill_flow
     ((ConfigOptionFloat,                fill_flow))
+    // ldx[fill_flow] add  zhe definition of zhe data type for forced_reversal
+    ((ConfigOptionBool,                 forced_reversal))
     ((ConfigOptionPercent,              fill_density))
     ((ConfigOptionEnum<InfillPattern>,  fill_pattern))
     ((ConfigOptionEnum<FuzzySkinType>,  fuzzy_skin))

@@ -44,7 +44,7 @@ protected:
                               unsigned int                   thickness_layers,
                               const std::pair<float, Point> &direction,
                               ExPolygon                      expolygon,
-                              Polylines &polylines_out) override;
+        Polylines &polylines_out) override;
 
     // Let the G-code export reoder the infill lines.
 	bool no_sort() const override { return false; }

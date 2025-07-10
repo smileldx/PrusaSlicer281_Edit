@@ -21,8 +21,9 @@ class FillEnsuring : public Fill
 public:
     Fill *clone() const override { return new FillEnsuring(*this); }
     ~FillEnsuring() override = default;
-    Polylines      fill_surface(const Surface *surface, const FillParams &params) override { return {}; };
-    ThickPolylines fill_surface_arachne(const Surface *surface, const FillParams &params) override
+    Polylines      fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override { return {}; };
+    ThickPolylines fill_surface_arachne(
+        const Surface *surface, const FillParams &params) override
     {
         return make_fill_polylines(this, surface, params, true, true, true);
     };

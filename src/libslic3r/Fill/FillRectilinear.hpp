@@ -34,12 +34,12 @@ class FillRectilinear : public Fill
 public:
     Fill* clone() const override { return new FillRectilinear(*this); }
     ~FillRectilinear() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool is_self_crossing() override { return false; }
 
 protected:
     // Fill by single directional lines, interconnect the lines along perimeters.
-	bool fill_surface_by_lines(const Surface *surface, const FillParams &params, float angleBase, float pattern_shift, Polylines &polylines_out);
+	bool fill_surface_by_lines(const Surface *surface, const FillParams &params, float angleBase, float pattern_shift, Polylines &polylines_out, bool forcereversal = false);
 
 
     // Fill by multiple sweeps of differing directions.
@@ -69,7 +69,7 @@ class FillMonotonic : public FillRectilinear
 public:
     Fill* clone() const override { return new FillMonotonic(*this); }
     ~FillMonotonic() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
 	bool no_sort() const override { return true; }
 };
 
@@ -78,7 +78,7 @@ class FillMonotonicLines : public FillRectilinear
 public:
     Fill* clone() const override { return new FillMonotonicLines(*this); }
     ~FillMonotonicLines() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool no_sort() const override { return true; }
 };
 
@@ -87,7 +87,7 @@ class FillGrid : public FillRectilinear
 public:
     Fill* clone() const override { return new FillGrid(*this); }
     ~FillGrid() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool is_self_crossing() override { return true; }
 
 protected:
@@ -100,7 +100,7 @@ class FillTriangles : public FillRectilinear
 public:
     Fill* clone() const override { return new FillTriangles(*this); }
     ~FillTriangles() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool is_self_crossing() override { return true; }
 
 protected:
@@ -113,7 +113,7 @@ class FillStars : public FillRectilinear
 public:
     Fill* clone() const override { return new FillStars(*this); }
     ~FillStars() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool is_self_crossing() override { return true; }
 
 protected:
@@ -126,7 +126,7 @@ class FillCubic : public FillRectilinear
 public:
     Fill* clone() const override { return new FillCubic(*this); }
     ~FillCubic() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
     bool is_self_crossing() override { return true; }
 
 protected:
@@ -139,7 +139,7 @@ class FillSupportBase : public FillRectilinear
 public:
     Fill* clone() const override { return new FillSupportBase(*this); }
     ~FillSupportBase() override = default;
-    Polylines fill_surface(const Surface *surface, const FillParams &params) override;
+    Polylines fill_surface(const Surface *surface, const FillParams &params, bool forcereversal = false) override;
 
 protected:
     // The grid fill will keep the angle constant between the layers, see the implementation of Slic3r::Fill.

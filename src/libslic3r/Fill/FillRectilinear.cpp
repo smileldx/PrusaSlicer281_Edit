@@ -17,6 +17,7 @@
 #include <random>
 #include <cstdint>
 #include <numeric>
+#include <iostream>
 #include <string>
 #include <utility>
 #include <vector>
@@ -50,6 +51,8 @@
 #include "libslic3r/libslic3r.h"
 
 namespace Slic3r {
+
+ 
 
 // Having a segment of a closed polygon, calculate its Euclidian length.
 // The segment indices seg1 and seg2 signify an end point of an edge in the forward direction of the loop,
@@ -1363,41 +1366,52 @@ static SegmentIntersection& end_of_vertical_run(SegmentedIntersectionLine &il, S
 	return const_cast<SegmentIntersection&>(end_of_vertical_run(std::as_const(il), std::as_const(start)));
 }
 
-static void traverse_graph_generate_polylines(const ExPolygonWithOffset              &poly_with_offset,
-                                              const FillParams                       &params,
-                                              std::vector<SegmentedIntersectionLine> &segs,
-                                              const bool                              consistent_pattern,
-                                              Polylines                              &polylines_out)
-{
+static void traverse_graph_generate_polylines(
+    const ExPolygonWithOffset &poly_with_offset,
+    const FillParams &params,
+    std::vector<SegmentedIntersectionLine> &segs,
+    const bool consistent_pattern,
+    Polylines &polylines_out,
+    int layer_id=0,
+    bool forcereversal = false
+) {
+    std::string line_str_out = "";
+    /*line_str_out += "layer_id:" + std::to_string(layer_id) +
+        " forcereversal:" + std::to_string(forcereversal) + "\n";*/
     // For each outer only chords, measure their maximum distance to the bow of the outer contour.
     // Mark an outer only chord as consumed, if the distance is low.
-    for (int i_vline = 0; i_vline < int(segs.size()); ++ i_vline) {
+    for (int i_vline = 0; i_vline < int(segs.size()); ++i_vline) {
         SegmentedIntersectionLine &vline = segs[i_vline];
-        for (int i_intersection = 0; i_intersection + 1 < int(vline.intersections.size()); ++ i_intersection) {
+       /* line_str_out += "i_vline:" + std::to_string(i_vline) + " ";*/
+        for (int i_intersection = 0; i_intersection + 1 < int(vline.intersections.size());
+             ++i_intersection) {
             if (vline.intersections[i_intersection].type == SegmentIntersection::OUTER_LOW &&
                 vline.intersections[i_intersection + 1].type == SegmentIntersection::OUTER_HIGH) {
                 bool consumed = false;
                 //                if (params.full_infill()) {
-                //                        measure_outer_contour_slab(poly_with_offset, segs, i_vline, i_ntersection);
+                //                        measure_outer_contour_slab(poly_with_offset, segs,
+                //                        i_vline, i_ntersection);
                 //                } else
                 consumed = true;
                 vline.intersections[i_intersection].consumed_vertical_up = consumed;
             }
+           /* line_str_out += "X:" + std::to_string(vline.pos) +" "+"Y:" +std::to_string(vline.intersections[i_intersection].pos()) + " ";*/
         }
+        /*line_str_out += "\n";*/
     }
-
+    /*printf("%s", line_str_out.c_str());*/
     // Now construct a graph.
     // Find the first point.
     // Naively one would expect to achieve best results by chaining the paths by the shortest distance,
     // but that procedure does not create the longest continuous paths.
     // A simple "sweep left to right" procedure achieves better results.
-    int    	  i_vline = 0;
-    int    	  i_intersection = -1;
+    int i_vline = 0;
+    int i_intersection = -1;
     // Follow the line, connect the lines into a graph.
     // Until no new line could be added to the output path:
-    Point     pointLast;
-    Polyline* polyline_current = nullptr;
-    if (! polylines_out.empty())
+    Point pointLast;
+    Polyline *polyline_current = nullptr;
+    if (!polylines_out.empty())
         pointLast = polylines_out.back().points.back();
     for (;;) {
         if (i_intersection == -1) {
@@ -1412,15 +1426,22 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
 
                     // For infill that needs to be consistent between layers (like Zig Zag),
                     // we are switching between forward and backward passes based on the line index.
-                    const bool forward_pass = !consistent_pattern || (i_vline2 % 2 == 0);
+                    
+                    bool forward_pass =(i_vline2 % 2 == 0);
+                    forward_pass=forcereversal?!forward_pass:forward_pass;
                     for (int i = 0; i < int(vline.intersections.size()); ++i) {
-                        const int                  intrsctn_idx = forward_pass ? i : int(vline.intersections.size()) - i - 1;
-                        const SegmentIntersection &intrsctn     = vline.intersections[intrsctn_idx];
+                        const int intrsctn_idx = forward_pass ?
+                            i :
+                            int(vline.intersections.size()) - i - 1;
+                        const SegmentIntersection &intrsctn = vline.intersections[intrsctn_idx];
+                        
                         if (intrsctn.is_outer()) {
                             assert(intrsctn.is_low() || intrsctn_idx > 0);
-                            const bool consumed = intrsctn.is_low() ? intrsctn.consumed_vertical_up : vline.intersections[intrsctn_idx - 1].consumed_vertical_up;
+                            const bool consumed = intrsctn.is_low() ?
+                                intrsctn.consumed_vertical_up :
+                                vline.intersections[intrsctn_idx - 1].consumed_vertical_up;
                             if (!consumed) {
-                                i_vline        = i_vline2;
+                                i_vline = i_vline2;
                                 i_intersection = intrsctn_idx;
                                 goto found;
                             }
@@ -1441,30 +1462,30 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
         }
 
         // From the initial point (i_vline, i_intersection), follow a path.
-        SegmentedIntersectionLine &vline 		= segs[i_vline];
-        SegmentIntersection 	  *it 			= &vline.intersections[i_intersection];
-        bool 					   going_up 	= it->is_low();
-        bool 					   try_connect 	= false;
+        SegmentedIntersectionLine &vline = segs[i_vline];
+        SegmentIntersection *it = &vline.intersections[i_intersection];
+        bool going_up = it->is_low();
+        bool try_connect = false;
         if (going_up) {
-            assert(! it->consumed_vertical_up);
+            assert(!it->consumed_vertical_up);
             assert(size_t(i_intersection + 1) < vline.intersections.size());
             // Step back to the beginning of the vertical segment to mark it as consumed.
             if (it->is_inner()) {
                 assert(i_intersection > 0);
-                -- it;
-                -- i_intersection;
+                --it;
+                --i_intersection;
             }
             // Consume the complete vertical segment up to the outer contour.
             do {
                 it->consumed_vertical_up = true;
-                ++ it;
-                ++ i_intersection;
+                ++it;
+                ++i_intersection;
                 assert(size_t(i_intersection) < vline.intersections.size());
             } while (it->type != SegmentIntersection::OUTER_HIGH);
             if ((it - 1)->is_inner()) {
                 // Step back.
-                -- it;
-                -- i_intersection;
+                --it;
+                --i_intersection;
                 assert(it->type == SegmentIntersection::INNER_HIGH);
                 try_connect = true;
             }
@@ -1478,14 +1499,14 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
                 it->consumed_vertical_up = true;
             do {
                 assert(i_intersection > 0);
-                -- it;
-                -- i_intersection;
+                --it;
+                --i_intersection;
                 it->consumed_vertical_up = true;
             } while (it->type != SegmentIntersection::OUTER_LOW);
             if ((it + 1)->is_inner()) {
                 // Step back.
-                ++ it;
-                ++ i_intersection;
+                ++it;
+                ++i_intersection;
                 assert(it->type == SegmentIntersection::INNER_LOW);
                 try_connect = true;
             }
@@ -1493,16 +1514,20 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
         if (try_connect) {
             // Decide, whether to finish the segment, or whether to follow the perimeter.
             // 1) Find possible connection points on the previous / next vertical line.
-        	int  i_prev = it->left_horizontal();
-        	int  i_next = it->right_horizontal();
+            int i_prev = it->left_horizontal();
+            int i_next = it->right_horizontal();
 
             // To ensure pattern consistency between layers for Zig Zag infill, we always
             // try to connect to the next vertical line and never to the previous vertical line.
-            bool intersection_prev_valid = intersection_on_prev_vertical_line_valid(segs, i_vline, i_intersection) && !consistent_pattern;
-            bool intersection_next_valid = intersection_on_next_vertical_line_valid(segs, i_vline, i_intersection);
+            bool intersection_prev_valid =
+                intersection_on_prev_vertical_line_valid(segs, i_vline, i_intersection) &&
+                !consistent_pattern;
+            bool intersection_next_valid =
+                intersection_on_next_vertical_line_valid(segs, i_vline, i_intersection);
             bool intersection_horizontal_valid = intersection_prev_valid || intersection_next_valid;
 
-            // Mark both the left and right connecting segment as consumed, because one cannot go to this intersection point as it has been consumed.
+            // Mark both the left and right connecting segment as consumed, because one cannot go to
+            // this intersection point as it has been consumed.
             if (i_prev != -1)
                 segs[i_vline - 1].intersections[i_prev].consumed_perimeter_right = true;
             if (i_next != -1)
@@ -1510,25 +1535,33 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
 
             // Try to connect to a previous or next vertical line, making a zig-zag pattern.
             if (intersection_horizontal_valid) {
-            	// A horizontal connection along the perimeter line exists.
-	            assert(it->is_inner());
-            	bool take_next = intersection_next_valid;
-            	if (intersection_prev_valid && intersection_next_valid) {
-            		// Take the shorter segment. This greedy heuristics may not be the best.
-            		coordf_t dist_prev = measure_perimeter_horizontal_segment_length(poly_with_offset, segs, i_vline - 1, i_prev, i_intersection);
-	                coordf_t dist_next = measure_perimeter_horizontal_segment_length(poly_with_offset, segs, i_vline, i_intersection, i_next);
-	                take_next = dist_next < dist_prev;
-	            }
-                polyline_current->points.emplace_back(vline.pos, it->pos());
-                emit_perimeter_prev_next_segment(poly_with_offset, segs, i_vline, it->iContour, i_intersection, take_next ? i_next : i_prev, *polyline_current, take_next);
-                //FIXME consume the left / right connecting segments at the other end of this line? Currently it is not critical because a perimeter segment is not followed if the vertical segment at the other side has already been consumed.
-                // Advance to the neighbor line.
-                if (take_next) {
-                    ++ i_vline;
-                    i_intersection = i_next;
+                // A horizontal connection along the perimeter line exists.
+                assert(it->is_inner());
+                bool take_next = intersection_next_valid;
+                if (intersection_prev_valid && intersection_next_valid) {
+                    // Take the shorter segment. This greedy heuristics may not be the best.
+                    coordf_t dist_prev = measure_perimeter_horizontal_segment_length(
+                        poly_with_offset, segs, i_vline - 1, i_prev, i_intersection
+                    );
+                    coordf_t dist_next = measure_perimeter_horizontal_segment_length(
+                        poly_with_offset, segs, i_vline, i_intersection, i_next
+                    );
+                    take_next = dist_next < dist_prev;
                 }
-                else {
-                    -- i_vline;
+                polyline_current->points.emplace_back(vline.pos, it->pos());
+                emit_perimeter_prev_next_segment(
+                    poly_with_offset, segs, i_vline, it->iContour, i_intersection,
+                    take_next ? i_next : i_prev, *polyline_current, take_next
+                );
+                // FIXME consume the left / right connecting segments at the other end of this line?
+                // Currently it is not critical because a perimeter segment is not followed if the
+                // vertical segment at the other side has already been consumed.
+                //  Advance to the neighbor line.
+                if (take_next) {
+                    ++i_vline;
+                    i_intersection = i_next;
+                } else {
+                    --i_vline;
                     i_intersection = i_prev;
                 }
                 continue;
@@ -1536,46 +1569,54 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
 
             // Try to connect to a previous or next point on the same vertical line.
             int i_vertical = it->vertical_outside();
-            auto vertical_link_quality = (i_vertical == -1 || vline.intersections[i_vertical + (going_up ? 0 : -1)].consumed_vertical_up) ? 
-            	SegmentIntersection::LinkQuality::Invalid : it->vertical_outside_quality();
+            auto vertical_link_quality =
+                (i_vertical == -1 ||
+                 vline.intersections[i_vertical + (going_up ? 0 : -1)].consumed_vertical_up) ?
+                SegmentIntersection::LinkQuality::Invalid :
+                it->vertical_outside_quality();
 #if 0            	
             if (vertical_link_quality == SegmentIntersection::LinkQuality::Valid ||
             	// Follow the link if there is no horizontal link available.
             	(! intersection_horizontal_valid && vertical_link_quality != SegmentIntersection::LinkQuality::Invalid)) {
 #else
-           	if (vertical_link_quality != SegmentIntersection::LinkQuality::Invalid) {
+            if (vertical_link_quality != SegmentIntersection::LinkQuality::Invalid) {
 #endif
                 assert(it->iContour == vline.intersections[i_vertical].iContour);
                 polyline_current->points.emplace_back(vline.pos, it->pos());
                 if (vertical_link_quality == SegmentIntersection::LinkQuality::Valid)
                     // Consume the connecting contour and the next segment.
-                    emit_perimeter_segment_on_vertical_line(poly_with_offset, segs, i_vline, it->iContour, i_intersection, i_vertical,
-                        *polyline_current, going_up ? it->has_left_vertical_up() : it->has_right_vertical_down());
+                    emit_perimeter_segment_on_vertical_line(
+                        poly_with_offset, segs, i_vline, it->iContour, i_intersection, i_vertical,
+                        *polyline_current,
+                        going_up ? it->has_left_vertical_up() : it->has_right_vertical_down()
+                    );
                 else {
                     // Just skip the connecting contour and start a new path.
                     polylines_out.emplace_back();
                     polyline_current = &polylines_out.back();
-                    polyline_current->points.emplace_back(vline.pos, vline.intersections[i_vertical].pos());
+                    polyline_current->points
+                        .emplace_back(vline.pos, vline.intersections[i_vertical].pos());
                 }
-                // Mark both the left and right connecting segment as consumed, because one cannot go to this intersection point as it has been consumed.
-                // If there are any outer intersection points skipped (bypassed) by the contour,
-                // mark them as processed.
+                // Mark both the left and right connecting segment as consumed, because one cannot
+                // go to this intersection point as it has been consumed. If there are any outer
+                // intersection points skipped (bypassed) by the contour, mark them as processed.
                 if (going_up)
                     for (int i = i_intersection; i < i_vertical; ++i)
                         vline.intersections[i].consumed_vertical_up = true;
                 else
                     for (int i = i_vertical; i < i_intersection; ++i)
                         vline.intersections[i].consumed_vertical_up = true;
-                // seg.intersections[going_up ? i_intersection : i_intersection - 1].consumed_vertical_up = true;
+                // seg.intersections[going_up ? i_intersection : i_intersection -
+                // 1].consumed_vertical_up = true;
                 it->consumed_perimeter_right = true;
                 (going_up ? ++it : --it)->consumed_perimeter_right = true;
                 i_intersection = i_vertical;
                 continue;
             }
 
-            // No way to continue the current polyline. Take the rest of the line up to the outer contour.
-            // This will finish the polyline, starting another polyline at a new point.
-            going_up ? ++ it : -- it;
+            // No way to continue the current polyline. Take the rest of the line up to the outer
+            // contour. This will finish the polyline, starting another polyline at a new point.
+            going_up ? ++it : --it;
         }
 
         // Finish the current vertical line,
@@ -1586,19 +1627,27 @@ static void traverse_graph_generate_polylines(const ExPolygonWithOffset         
         polyline_current->points.emplace_back(pointLast);
         // Handle duplicate points and zero length segments.
         polyline_current->remove_duplicate_points();
-        assert(! polyline_current->has_duplicate_points());
+        assert(!polyline_current->has_duplicate_points());
         // Handle nearly zero length edges.
         if (polyline_current->points.size() <= 1 ||
             (polyline_current->points.size() == 2 &&
-                std::abs(polyline_current->points.front()(0) - polyline_current->points.back()(0)) < SCALED_EPSILON &&
-                std::abs(polyline_current->points.front()(1) - polyline_current->points.back()(1)) < SCALED_EPSILON))
+             std::abs(polyline_current->points.front()(0) - polyline_current->points.back()(0)) <
+                 SCALED_EPSILON &&
+             std::abs(polyline_current->points.front()(1) - polyline_current->points.back()(1)) <
+                 SCALED_EPSILON))
             polylines_out.pop_back();
-        it 				 = nullptr;
-        i_intersection   = -1;
+        it = nullptr;
+        i_intersection = -1;
+        if (polylines_out.size()>0) {
+            
+           /* std::string strOut;
+            for (Point &ply : polylines_out.back().points)
+                strOut += "(" + std::to_string(ply[0]) + " , " + std::to_string(ply[1]) + ")  ";
+            printf("layer_id %d  %s\n",layer_id,strOut.c_str());*/
+        }
         polyline_current = nullptr;
     }
 }
-
 struct MonotonicRegion
 {
     struct Boundary {
@@ -2760,7 +2809,7 @@ BoundingBox FillRectilinear::extended_object_bounding_box() const {
     return out.scaled(sqrt(2.));
 }
 
-bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillParams &params, float angleBase, float pattern_shift, Polylines &polylines_out)
+bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillParams &params, float angleBase, float pattern_shift, Polylines &polylines_out,bool forcereversal)
 {
     // At the end, only the new polylines will be rotated back.
     size_t n_polylines_out_initial = polylines_out.size();
@@ -2879,7 +2928,11 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
 		    polylines_from_paths(path, poly_with_offset, segs, polylines_out);
         }
 	} else {
-		traverse_graph_generate_polylines(poly_with_offset, params, segs, this->has_consistent_pattern(), polylines_out);
+        printf("InfillType: %s\n", this->has_consistent_pattern()?"1":"0");
+        traverse_graph_generate_polylines(
+            poly_with_offset, params, segs, this->has_consistent_pattern(), polylines_out,
+            this->layer_id, forcereversal
+        );
     }
 
 #ifdef SLIC3R_DEBUG
@@ -2991,15 +3044,14 @@ bool FillRectilinear::fill_surface_by_multilines(const Surface *surface, FillPar
     return true;
 }
 
-Polylines FillRectilinear::fill_surface(const Surface *surface, const FillParams &params)
-{
+Polylines FillRectilinear::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal) {
     Polylines polylines_out;
-    if (! fill_surface_by_lines(surface, params, 0.f, 0.f, polylines_out))
+    if (!fill_surface_by_lines(surface, params, 0.f, 0.f, polylines_out, forcereversal))
         BOOST_LOG_TRIVIAL(error) << "FillRectilinear::fill_surface() failed to fill a region.";
     return polylines_out;
 }
 
-Polylines FillMonotonic::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillMonotonic::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     FillParams params2 = params;
     params2.monotonic = true;
@@ -3009,7 +3061,7 @@ Polylines FillMonotonic::fill_surface(const Surface *surface, const FillParams &
     return polylines_out;
 }
 
-Polylines FillMonotonicLines::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillMonotonicLines::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     FillParams params2 = params;
     params2.monotonic = true;
@@ -3020,7 +3072,7 @@ Polylines FillMonotonicLines::fill_surface(const Surface *surface, const FillPar
     return polylines_out;
 }
 
-Polylines FillGrid::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillGrid::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     Polylines polylines_out;
     if (! this->fill_surface_by_multilines(
@@ -3031,7 +3083,7 @@ Polylines FillGrid::fill_surface(const Surface *surface, const FillParams &param
     return polylines_out;
 }
 
-Polylines FillTriangles::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillTriangles::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     Polylines polylines_out;
     if (! this->fill_surface_by_multilines(
@@ -3042,7 +3094,7 @@ Polylines FillTriangles::fill_surface(const Surface *surface, const FillParams &
     return polylines_out;
 }
 
-Polylines FillStars::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillStars::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     Polylines polylines_out;
     if (! this->fill_surface_by_multilines(
@@ -3057,7 +3109,7 @@ Polylines FillStars::fill_surface(const Surface *surface, const FillParams &para
     return polylines_out;
 }
 
-Polylines FillCubic::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillCubic::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     Polylines polylines_out;
     coordf_t dx = sqrt(0.5) * z;
@@ -3069,7 +3121,7 @@ Polylines FillCubic::fill_surface(const Surface *surface, const FillParams &para
     return polylines_out; 
 }
 
-Polylines FillSupportBase::fill_surface(const Surface *surface, const FillParams &params)
+Polylines FillSupportBase::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     assert(! params.full_infill());
 
