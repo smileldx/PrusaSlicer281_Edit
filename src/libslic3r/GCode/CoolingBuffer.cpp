@@ -823,6 +823,7 @@ std::string CoolingBuffer::apply_layer_cooldown(
     }
     // Second generate the adjusted G-code.
     std::string new_gcode;
+    /*
     new_gcode.reserve(gcode.size() * 2);
     bool bridge_fan_control = false;
     int  bridge_fan_speed   = 0;
@@ -895,11 +896,12 @@ std::string CoolingBuffer::apply_layer_cooldown(
             new_gcode  += GCodeWriter::set_fan(m_config.gcode_flavor, m_config.gcode_comments, m_fan_speed);
         }
     };
-
+    */
     const char         *pos               = gcode.c_str();
     int                 current_feedrate  = 0;
 
-    change_extruder_set_fan();
+   // change_extruder_set_fan();
+    /*
     for (const CoolingLine *line : lines) {
         const char *line_start  = gcode.c_str() + line->line_start;
         const char *line_end    = gcode.c_str() + line->line_end;
@@ -1008,6 +1010,7 @@ std::string CoolingBuffer::apply_layer_cooldown(
         }
         pos = line_end;
     }
+    */
     const char *gcode_end = gcode.c_str() + gcode.size();
     if (pos < gcode_end)
         new_gcode.append(pos, gcode_end - pos);
