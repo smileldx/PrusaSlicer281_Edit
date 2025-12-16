@@ -1461,7 +1461,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("Fill flow");
     def->sidetext = L("mm³");
     def->mode = comAdvanced;
-    def->min = 0.01;
+    def->min = 0.001;
     def->max = 30.1;
     def->set_default_value(new ConfigOptionFloat(13));
 
