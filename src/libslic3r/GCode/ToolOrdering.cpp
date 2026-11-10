@@ -88,8 +88,9 @@ static double calc_max_layer_height(const PrintConfig &config, double max_object
     double max_layer_height = std::numeric_limits<double>::max();
     for (size_t i = 0; i < config.nozzle_diameter.values.size(); ++ i) {
         double mlh = config.max_layer_height.get_at(i);
+        // ldx[解除层高限制修改代码] 未配置或为0时，默认最大层高改成10
         if (mlh == 0.)
-            mlh = 0.75 * config.nozzle_diameter.values[i];
+            mlh = 10.0;
         max_layer_height = std::min(max_layer_height, mlh);
     }
     // The Prusa3D Fast (0.35mm layer height) print profile sets a higher layer height than what is normally allowed

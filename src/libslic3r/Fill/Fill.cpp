@@ -75,6 +75,10 @@ struct SurfaceFillParams
     float line_spacing = 0.f;
     // ldx[forced_reversal] add forced_reversal  fields are used to( Suitable for filling lines of  rectangle in Arctic Pro)
     bool forced_reversal = false;
+    // ldx[infill_geo_spacing_mode] 0=Original, 1=StrictFixedSpacing, 2=FixedSpacingDistribute
+    int  geo_spacing_mode = 0;
+    // ldx[fill_flow] user-specified volumetric flow  mm³/s; 0 means use automatic Flow calculation
+    float fill_flow = 0.f;
     // Is bridging used for this fill? Bridging parameters may be used even if this->flow.bridge() is not set.
     bool 			bridge;
     // Non-negative for a bridge.
@@ -222,6 +226,10 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
                 params.line_spacing = region_config.line_spacing.value;
                 // ldx[forced_reversal] transfer value
                 params.forced_reversal = region_config.forced_reversal.value;
+                // ldx[infill_geo_spacing_mode] transfer value
+                params.geo_spacing_mode = static_cast<int>(region_config.infill_geo_spacing_mode.value);
+                // ldx[fill_flow] transfer user volumetric flow; 0 = auto
+                params.fill_flow = (region_config.fill_flow.value > 0.f) ? float(region_config.fill_flow.value) : 0.f;
 		        // Calculate the actual flow we'll be using for this infill.
 		        params.bridge = is_bridge || Fill::use_bridge_flow(params.pattern);
 				params.flow   = params.bridge ?
@@ -582,6 +590,8 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
         params.use_arachne                = (perimeter_generator == PerimeterGeneratorType::Arachne && surface_fill.params.pattern == ipConcentric) || surface_fill.params.pattern == ipEnsuring;
         params.layer_height               = layerm.layer()->height;
         params.prefer_clockwise_movements = this->object()->print()->config().prefer_clockwise_movements;
+        // ldx[infill_geo_spacing_mode] pass spacing mode to fill engine
+        params.geo_spacing_mode           = surface_fill.params.geo_spacing_mode;
 
         for (ExPolygon &expoly : surface_fill.expolygons) {
 			// Spacing is modified by the filler to indicate adjustments. Reset it for each expolygon.
@@ -611,6 +621,13 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
 		        	flow_mm3_per_mm = new_flow.mm3_per_mm();
 		        	flow_width      = new_flow.width();
 		        }
+                // ldx[fill_flow] If user specified a volumetric flow rate, override the calculated value.
+                // fill_flow is in mm³/mm; E = fill_flow / (π*(filament_d/2)²) which GCode generator handles.
+                if (surface_fill.params.fill_flow > 0.f) {
+                    double speed = layerm.region().config().infill_speed.value;
+                    if (speed > 0.0)
+                        flow_mm3_per_mm = double(surface_fill.params.fill_flow) / speed;
+                }
                 // Save into layer.
                 ExtrusionEntityCollection *eec        = new ExtrusionEntityCollection();
                 auto                       fill_begin = uint32_t(layerm.fills().size());

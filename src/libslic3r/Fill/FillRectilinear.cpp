@@ -2823,19 +2823,40 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
     std::pair<float, Point> rotate_vector = this->_infill_direction(surface);
     rotate_vector.first += angleBase;
 
-    assert(params.density > 0.0001f && params.density <= 1.f);
-    //ldx[line_spacing] Modify the value source of the field
-    //coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
-    coord_t line_spacing = coord_t(scale_(this->line_spacing));
-    if (line_spacing==0)
+    //ldx[line_spacing] When line_spacing is set, use it directly; otherwise fall back to density-based spacing.
+    // geo_spacing_mode: 0=Original, 1=StrictFixedSpacing, 2=FixedSpacingDistribute
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    coord_t line_spacing;
+    if (use_custom_spacing) {
+        // Custom spacing mode: ignore density for geometry, use exact line_spacing
+        line_spacing = coord_t(scale_(this->line_spacing));
+    } else {
+        // Original mode: density-based spacing
+        assert(params.density > 0.0001f && params.density <= 1.f);
         line_spacing = coord_t(scale_(this->spacing) / params.density);
+    }
 
     // On the polygons of poly_with_offset, the infill lines will be connected.
+    // ldx[infill_geo_spacing_mode] Plan B: snake-like continuous infill reaching the exact model boundary.
+    // aoffset1 (inner_offset) defines polygons_outer (exact model boundary, 0 offset).
+    // aoffset2 (outer_offset) defines polygons_inner (infill line endpoints and U-turn path).
+    // To satisfy Clipper nested contour requirements and avoid degenerate 0-contour short circuit,
+    // we use a microscopic 1-micron offset (-0.001mm), which aligns with the true boundary.
+    float inner_offset, outer_offset;
+    if (use_custom_spacing) {
+        inner_offset = 0.f;
+        outer_offset = -float(scale_(0.0001));
+    } else {
+        // Original PrusaSlicer shrink logic.
+        const float INFILL_OVERLAP_OVER_SPACING = 0.45f;
+        inner_offset = float(scale_(this->overlap - (0.5 - INFILL_OVERLAP_OVER_SPACING) * this->spacing));
+        outer_offset = float(scale_(this->overlap - 0.5f * this->spacing));
+    }
     ExPolygonWithOffset poly_with_offset(
-        surface->expolygon, 
-        - rotate_vector.first, 
-        float(scale_(this->overlap - (0.5 - INFILL_OVERLAP_OVER_SPACING) * this->spacing)),
-        float(scale_(this->overlap - 0.5f * this->spacing)));
+        surface->expolygon,
+        - rotate_vector.first,
+        inner_offset,
+        outer_offset);
     if (poly_with_offset.n_contours_inner == 0) {
         // Not a single infill line fits.
         //FIXME maybe one shall trigger the gap fill here?
@@ -2848,7 +2869,16 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
     BoundingBox bounding_box     = this->has_consistent_pattern() ? this->extended_object_bounding_box() : bounding_box_src;
 
     // define flow spacing according to requested density
-    if (params.full_infill() && !params.dont_adjust) {
+    // ldx[infill_geo_spacing_mode]
+    // 0: Original mode
+    // 1: StrictFixedSpacing - exact line_spacing, no adjustment, tail gap left blank
+    // 2: FixedSpacingDistribute - adjusts line_spacing using _adjust_solid_spacing to evenly distribute across width
+    if (params.geo_spacing_mode == 2) {
+        line_spacing = this->_adjust_solid_spacing(bounding_box_src.size().x(), line_spacing);
+        this->spacing = unscale<double>(line_spacing);
+    } else if (params.geo_spacing_mode == 1) {
+        // Strict: line_spacing stays strictly scale_(this->line_spacing), tail gap left blank
+    } else if (params.full_infill() && !params.dont_adjust) {
         line_spacing = this->_adjust_solid_spacing(bounding_box_src.size().x(), line_spacing);
         this->spacing = unscale<double>(line_spacing);
     } else {
@@ -2868,7 +2898,7 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
     // n_vlines = ceil(bbox_width / line_spacing)
     size_t  n_vlines = (bounding_box.max(0) - bounding_box.min(0) + line_spacing - 1) / line_spacing;
 	coord_t x0 = bounding_box.min(0);
-	if (params.full_infill())
+	if (params.geo_spacing_mode == 0 && params.full_infill())
 		x0 += (line_spacing + coord_t(SCALED_EPSILON)) / 2;
 
 #ifdef SLIC3R_DEBUG
@@ -2928,7 +2958,6 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
 		    polylines_from_paths(path, poly_with_offset, segs, polylines_out);
         }
 	} else {
-        printf("InfillType: %s\n", this->has_consistent_pattern()?"1":"0");
         traverse_graph_generate_polylines(
             poly_with_offset, params, segs, this->has_consistent_pattern(), polylines_out,
             this->layer_id, forcereversal
@@ -3015,23 +3044,33 @@ bool FillRectilinear::fill_surface_by_multilines(const Surface *surface, FillPar
     assert(sweep_params.size() > 1);
     assert(! params.full_infill());
     params.density /= double(sweep_params.size());
-    assert(params.density > 0.0001f && params.density <= 1.f);
+    // ldx[line_spacing] In custom spacing mode density is not used for geometry; skip assert.
+    if (params.geo_spacing_mode == 0)
+        assert(params.density > 0.0001f && params.density <= 1.f);
 
-    ExPolygonWithOffset poly_with_offset_base(surface->expolygon, 0, float(scale_(this->overlap - 0.5 * this->spacing)));
+    // ldx[infill_geo_spacing_mode] In custom spacing modes do NOT shrink the contour.
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    const float contour_offset = use_custom_spacing ? 0.f : float(scale_(this->overlap - 0.5 * this->spacing));
+    ExPolygonWithOffset poly_with_offset_base(surface->expolygon, 0, contour_offset);
     if (poly_with_offset_base.n_contours == 0)
         // Not a single infill line fits.
         return true;
 
     Polylines fill_lines;
-    coord_t line_width   = coord_t(scale_(this->spacing));
-    //ldx[line_spacing] for grid ,triangles, stars,
-    //coord_t line_spacing = coord_t(scale_(this->spacing) / params.density);
-    coord_t line_spacing = coord_t(scale_(this->line_spacing));
+    coord_t line_width = coord_t(scale_(this->spacing));
+    coord_t x_margin   = use_custom_spacing ? coord_t(SCALED_EPSILON) : line_width + coord_t(SCALED_EPSILON);
+    // ldx[line_spacing] for grid, triangles, stars — use line_spacing when set, otherwise density-based fallback.
+    coord_t line_spacing;
+    if (use_custom_spacing) {
+        line_spacing = coord_t(scale_(this->line_spacing));
+    } else {
+        line_spacing = coord_t(scale_(this->spacing) / params.density);
+    }
     std::pair<float, Point> rotate_vector = this->_infill_direction(surface);
     for (const SweepParams &sweep : sweep_params) {
         // Rotate polygons so that we can work with vertical lines here
         float angle = rotate_vector.first + sweep.angle_base;
-        make_fill_lines(ExPolygonWithOffset(poly_with_offset_base, - angle), rotate_vector.second.rotated(-angle), angle, line_width + coord_t(SCALED_EPSILON), line_spacing, coord_t(scale_(sweep.pattern_shift)), fill_lines);
+        make_fill_lines(ExPolygonWithOffset(poly_with_offset_base, - angle), rotate_vector.second.rotated(-angle), angle, x_margin, line_spacing, coord_t(scale_(sweep.pattern_shift)), fill_lines);
     }
 
     if (params.dont_connect() || fill_lines.size() <= 1) {

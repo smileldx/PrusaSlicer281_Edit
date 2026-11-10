@@ -159,10 +159,14 @@ Flow Flow::with_spacing(float new_spacing) const
         auto  new_diameter = new_spacing - gap;
         out.m_width        = out.m_height = new_diameter;
     } else {
-        assert(m_width >= m_height);
-        out.m_width += new_spacing - m_spacing;
-        if (out.m_width < out.m_height)
-            throw Slic3r::InvalidArgument("Invalid spacing supplied to Flow::with_spacing()");
+        // ldx[解除层高限制修改代码] 允许挤出宽小于层高，取消 m_width >= m_height 断言与异常限制
+        if (m_width >= m_height && out.m_width + (new_spacing - m_spacing) >= m_height) {
+            out.m_width += new_spacing - m_spacing;
+        } else {
+            if (new_spacing <= 0.f)
+                throw Slic3r::InvalidArgument("Invalid spacing supplied to Flow::with_spacing()");
+            out.m_width = rounded_rectangle_extrusion_width_from_spacing(new_spacing, m_height);
+        }
     }
     out.m_spacing = new_spacing;
     return out;
@@ -172,7 +176,8 @@ Flow Flow::with_spacing(float new_spacing) const
 Flow Flow::with_cross_section(float area_new) const
 {
     assert(! m_bridge);
-    assert(m_width >= m_height);
+    // ldx[解除层高限制修改代码] 允许挤出宽小于层高
+    // assert(m_width >= m_height);
 
     // Adjust for bridge_flow_ratio, maintain the extrusion spacing.
     float area = this->mm3_per_mm();
@@ -189,8 +194,8 @@ Flow Flow::with_cross_section(float area_new) const
     } else if (area_new < area - EPSILON) {
         // Decreasing the flow rate.
         float width_new = m_width - (area - area_new) / m_height;
-        assert(width_new > 0);
         if (width_new > m_height) {
+            assert(width_new > 0);
             // Shrink the extrusion width.
             return this->with_width(width_new);
         } else {
@@ -204,7 +209,12 @@ Flow Flow::with_cross_section(float area_new) const
 
 float Flow::rounded_rectangle_extrusion_spacing(float width, float height)
 {
-    auto out = width - height * float(1. - 0.25 * PI);
+    // ldx[解除层高限制修改代码] 当挤出宽小于层高时，采用竖直胶囊截面模型计算等效间距，避免大层高时产生负间距报错
+    if (width <= 0.f || height <= 0.f)
+        throw FlowErrorNegativeSpacing();
+    float out = (width >= height) ?
+        (width - height * float(1. - 0.25 * PI)) :
+        (width * (height - width * float(1. - 0.25 * PI)) / height);
     if (out <= 0.f)
         throw FlowErrorNegativeSpacing();
     return out;
@@ -212,7 +222,16 @@ float Flow::rounded_rectangle_extrusion_spacing(float width, float height)
 
 float Flow::rounded_rectangle_extrusion_width_from_spacing(float spacing, float height)
 {
-    return float(spacing + height * (1. - 0.25 * PI));
+    // ldx[解除层高限制修改代码] 兼容 spacing < 0.25*PI*height（竖直胶囊截面，宽小于层高）的逆向反推
+    if (height <= 0.f || spacing >= height * float(0.25 * PI))
+        return float(spacing + height * (1. - 0.25 * PI));
+    if (spacing <= 0.f)
+        return 0.f;
+    const float c = float(1. - 0.25 * PI);
+    float disc = height * height - 4.f * c * spacing * height;
+    if (disc < 0.f)
+        disc = 0.f;
+    return float((height - std::sqrt(disc)) / (2.f * c));
 }
 
 float Flow::bridge_extrusion_spacing(float dmr)
@@ -223,11 +242,15 @@ float Flow::bridge_extrusion_spacing(float dmr)
 // This method returns extrusion volume per head move unit.
 double Flow::mm3_per_mm() const
 {
+    // ldx[解除层高限制修改代码] 当挤出宽小于层高时，采用竖直胶囊截面计算挤出体积，避免大层高时产生负流量报错
     float res = m_bridge ?
         // Area of a circle with dmr of this->width.
         float((m_width * m_width) * 0.25 * PI) :
-        // Rectangle with semicircles at the ends. ~ h (w - 0.215 h)
-        float(m_height * (m_width - m_height * (1. - 0.25 * PI)));
+        (m_width >= m_height) ?
+            // Rectangle with semicircles at the ends. ~ h (w - 0.215 h)
+            float(m_height * (m_width - m_height * (1. - 0.25 * PI))) :
+            // Vertical capsule when height > width. ~ w (h - 0.215 w)
+            float(m_width * (m_height - m_width * (1. - 0.25 * PI)));
     //assert(res > 0.);
 	if (res <= 0.)
 		throw FlowErrorNegativeFlow();

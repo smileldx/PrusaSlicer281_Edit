@@ -3363,8 +3363,9 @@ static double get_max_layer_height(const int extruder_idx)
     double max_layer_height = config.opt_float("max_layer_height", extruder_idx_zero_based);
 
     // In case max_layer_height is set to zero, it should default to 75 % of nozzle diameter:
+    // ldx[解除层高限制修改代码] 未配置或为0时，默认最大层高改成10
     if (max_layer_height < EPSILON)
-        max_layer_height = 0.75 * config.opt_float("nozzle_diameter", extruder_idx_zero_based);
+        max_layer_height = 10.0;
 
     return max_layer_height;
 }

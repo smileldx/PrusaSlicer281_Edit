@@ -100,7 +100,12 @@ bool Fill::use_bridge_flow(const InfillPattern type)
 Polylines Fill::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
     // Perform offset.
-    Slic3r::ExPolygons expp = offset_ex(surface->expolygon, float(scale_(this->overlap - 0.5 * this->spacing)));
+    // ldx[infill_geo_spacing_mode] Do not shrink the contour when using custom spacing mode.
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    const float offset_val = use_custom_spacing ? 0.f : float(scale_(this->overlap - 0.5 * this->spacing));
+    Slic3r::ExPolygons expp = (offset_val == 0.f) ?
+        ExPolygons{ surface->expolygon } :
+        offset_ex(surface->expolygon, offset_val);
     // Create the infills for each of the regions.
     Polylines polylines_out;
     for (ExPolygon &expoly : expp)
@@ -113,9 +118,13 @@ ThickPolylines Fill::fill_surface_arachne(
     const Surface *surface, const FillParams &params
 ) {
     // Perform offset.
-    Slic3r::ExPolygons expp = offset_ex(surface->expolygon, float(scale_(this->overlap - 0.5 * this->spacing)));
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    const float offset_val = use_custom_spacing ? 0.f : float(scale_(this->overlap - 0.5 * this->spacing));
     // Create the infills for each of the regions.
     ThickPolylines thick_polylines_out;
+    Slic3r::ExPolygons expp = (offset_val == 0.f) ?
+        ExPolygons{ surface->expolygon } :
+        offset_ex(surface->expolygon, offset_val);
     for (ExPolygon &expoly : expp)
         _fill_surface_single(params, surface->thickness_layers, _infill_direction(surface), std::move(expoly), thick_polylines_out);
     return thick_polylines_out;

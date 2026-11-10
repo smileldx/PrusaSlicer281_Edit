@@ -63,6 +63,14 @@ static t_config_enum_names enum_names_from_keys_map(const t_config_enum_values &
     template<> const t_config_enum_values& ConfigOptionEnum<NAME>::get_enum_values() { return s_keys_map_##NAME; } \
     template<> const t_config_enum_names& ConfigOptionEnum<NAME>::get_enum_names() { return s_keys_names_##NAME; }
 
+// ldx[InfillGeoSpacingMode] static enum map — required for ConfigOptionEnum<> template specialization
+static const t_config_enum_values s_keys_map_InfillGeoSpacingMode {
+    { "original",                 int(InfillGeoSpacingMode::Original) },
+    { "strict_fixed_spacing",     int(InfillGeoSpacingMode::StrictFixedSpacing) },
+    { "fixed_spacing_distribute", int(InfillGeoSpacingMode::FixedSpacingDistribute) }
+};
+CONFIG_OPTION_ENUM_DEFINE_STATIC_MAPS(InfillGeoSpacingMode)
+
 static const t_config_enum_values s_keys_map_ArcFittingType {
     { "disabled",       int(ArcFittingType::Disabled) },
     { "emit_center",    int(ArcFittingType::EmitCenter) }
@@ -1435,6 +1443,22 @@ void PrintConfigDef::init_fff_params()
     def->max = 360;
     def->mode = comAdvanced;
     def->set_default_value(new ConfigOptionFloat(45));
+
+    // ldx[infill_geo_spacing_mode] add infill_geo_spacing_mode used by load control
+    def = this->add("infill_geo_spacing_mode", coEnum);
+    def->label = L("Infill Geo Spacing Mode");
+    def->category = L("Infill");
+    def->tooltip = L("Controls how line_spacing is applied to fill geometry.\n"
+                     "Original: default PrusaSlicer behaviour (spacing from flow/density).\n"
+                     "Strict Fixed Spacing: exact line_spacing, no contour shrink, no adjust, tail gap left blank.\n"
+                     "Fixed Spacing Distribute: exact line_spacing, no contour shrink, tail gap evenly distributed.");
+    def->mode = comAdvanced;
+    def->set_enum<InfillGeoSpacingMode>(
+        {{"original", L("Original")},
+         {"strict_fixed_spacing", L("Strict Fixed Spacing")},
+         {"fixed_spacing_distribute", L("Fixed Spacing Distribute")}}
+    );
+    def->set_default_value(new ConfigOptionEnum<InfillGeoSpacingMode>(InfillGeoSpacingMode::Original));
     //ldx[fill_angles] add fill_angles used by load control
     def = this->add("fill_angles", coString);
     def->label = L("Fill angles");
@@ -1442,7 +1466,7 @@ void PrintConfigDef::init_fff_params()
     def->tooltip = L("change direction for example [0,0,0,90,90,90]");
     def->sidetext = L("°");
     def->mode = comAdvanced;
-    def->set_default_value(new ConfigOptionString());
+    def->set_default_value(new ConfigOptionString("0,0,0,90,90,90"));
     // ldx[line_spacing] add line_spacing used by load control
     def = this->add("line_spacing", coFloat);
     def->label = L("Line spacing");
@@ -1459,7 +1483,7 @@ void PrintConfigDef::init_fff_params()
     def->label = L("Fill flow");
     // def->category = L("Infill");
     def->tooltip = L("Fill flow");
-    def->sidetext = L("mm³");
+    def->sidetext = L("mm³/s");
     def->mode = comAdvanced;
     def->min = 0.001;
     def->max = 30.1;
@@ -2165,7 +2189,8 @@ void PrintConfigDef::init_fff_params()
     def->sidetext = L("mm");
     def->min = 0;
     def->mode = comAdvanced;
-    def->set_default_value(new ConfigOptionFloats { 0. });
+    // ldx[解除层高限制修改代码] 在配置文件中将默认最大层高改成10
+    def->set_default_value(new ConfigOptionFloats { 10. });
 
     def = this->add("max_print_speed", coFloat);
     def->label = L("Max print speed");

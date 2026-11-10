@@ -728,9 +728,10 @@ std::string Print::validate(std::vector<std::string>* warnings) const
             double extrusion_width_max = extrusion_width_min;
         	if (extrusion_width_min == 0) {
         		// Default "auto-generated" extrusion width is always valid.
-        	} else if (extrusion_width_min <= layer_height) {
-        		err_msg = (boost::format(_u8L("%1%=%2% mm is too low to be printable at a layer height %3% mm")) % opt_key % extrusion_width_min % layer_height).str();
-				return false;
+            // ldx[解除层高限制修改代码] 解绑线宽和层高限制（允许线宽小于等于层高）
+        	// } else if (extrusion_width_min <= layer_height) {
+        	// 	err_msg = (boost::format(_u8L("%1%=%2% mm is too low to be printable at a layer height %3% mm")) % opt_key % extrusion_width_min % layer_height).str();
+			// 	return false;
 			} else if (extrusion_width_max >= max_nozzle_diameter * 3.) {
 				err_msg = (boost::format(_u8L("Excessive %1%=%2% mm to be printable with a nozzle diameter %3% mm")) % opt_key % extrusion_width_max % max_nozzle_diameter).str();
 				return false;
@@ -801,13 +802,14 @@ std::string Print::validate(std::vector<std::string>* warnings) const
                 // if we don't have raft layers, any nozzle diameter is potentially used in first layer
                 first_layer_min_nozzle_diameter = min_nozzle_diameter;
             }
-            if (first_layer_height > first_layer_min_nozzle_diameter)
-                return _u8L("First layer height can't be greater than nozzle diameter");
+            // ldx[解除层高限制修改代码] 取消首层层高和层高不能大于喷嘴直径的限制
+            // if (first_layer_height > first_layer_min_nozzle_diameter)
+            //     return _u8L("First layer height can't be greater than nozzle diameter");
             
             // validate layer_height
             double layer_height = object->config().layer_height.value;
-            if (layer_height > min_nozzle_diameter)
-                return _u8L("Layer height can't be greater than nozzle diameter");
+            // if (layer_height > min_nozzle_diameter)
+            //     return _u8L("Layer height can't be greater than nozzle diameter");
 
             // Validate extrusion widths.
             std::string err_msg;

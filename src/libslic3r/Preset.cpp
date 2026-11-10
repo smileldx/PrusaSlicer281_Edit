@@ -467,6 +467,8 @@ static std::vector<std::string> s_Preset_print_options {
     "fill_flow",
     // ldx[forced_reversal] add forced_reversal Preset_print_options
     "forced_reversal",
+    // ldx[infill_geo_spacing_mode] add infill_geo_spacing_mode Preset_print_options
+    "infill_geo_spacing_mode",
     "bridge_angle",
     "solid_infill_below_area", "only_retract_when_crossing_perimeters", "infill_first",
     "ironing", "ironing_type", "ironing_flowrate", "ironing_speed", "ironing_spacing",

@@ -831,6 +831,8 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "fill_flow"
             //ldx[flow] add zhe judge dont know zhe meaning
             || opt_key == "forced_reversal"
+            //ldx[infill_geo_spacing_mode] add spacing mode invalidation
+            || opt_key == "infill_geo_spacing_mode"
             || opt_key == "infill_anchor"
             || opt_key == "infill_anchor_max"
             || opt_key == "top_infill_extrusion_width"

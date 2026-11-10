@@ -45,7 +45,8 @@ inline coordf_t max_layer_height_from_nozzle(const PrintConfig &print_config, in
     coordf_t min_layer_height = min_layer_height_from_nozzle(print_config, idx_nozzle);
     coordf_t max_layer_height = print_config.max_layer_height.get_at(idx_nozzle - 1);
     coordf_t nozzle_dmr       = print_config.nozzle_diameter.get_at(idx_nozzle - 1);
-    return std::max(min_layer_height, (max_layer_height == 0.) ? (0.75 * nozzle_dmr) : max_layer_height);
+    // ldx[解除层高限制修改代码] 未配置或为0时，默认最大层高改成10
+    return std::max(min_layer_height, (max_layer_height == 0.) ? 10.0 : max_layer_height);
 }
 
 // Minimum layer height for the variable layer height algorithm.
@@ -62,7 +63,8 @@ coordf_t Slicing::max_layer_height_from_nozzle(const DynamicPrintConfig &print_c
     coordf_t min_layer_height = min_layer_height_from_nozzle(print_config, idx_nozzle);
     coordf_t max_layer_height = print_config.opt_float("max_layer_height", idx_nozzle - 1);
     coordf_t nozzle_dmr       = print_config.opt_float("nozzle_diameter", idx_nozzle - 1);
-    return std::max(min_layer_height, (max_layer_height == 0.) ? (0.75 * nozzle_dmr) : max_layer_height);
+    // ldx[解除层高限制修改代码] 未配置或为0时，默认最大层高改成10
+    return std::max(min_layer_height, (max_layer_height == 0.) ? 10.0 : max_layer_height);
 }
 
 SlicingParameters SlicingParameters::create_from_config(

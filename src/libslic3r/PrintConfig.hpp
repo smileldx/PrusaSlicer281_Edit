@@ -70,6 +70,22 @@ class SLAPrintConfig;
 class SLAPrintObjectConfig;
 class SLAPrinterConfig;
 
+/*
+策略 A（严格模式，你描述的需求）
+    固定 line_spacing，不拉伸、不补尾隙，区域里能塞几条就是几条；末尾不足一个间距直接空出来；轮廓不收缩；E
+    完全由 fill_flow 驱动。适合做工艺试验、固定几何扫描。 
+策略 B（兼容模式） 
+    固定 line_spacing，但是保留
+    “均分剩余间隙”（最后一段自动微调一点点间距铺满），很多用户更容易接受；只是几何基准是你输入的
+l   ine_spacing，仅尾行微调。
+
+*/
+enum class InfillGeoSpacingMode {
+    Original =0,              // ldx[InfillGeoSpacingMode] 原始模式，不改变
+    StrictFixedSpacing =1,    // ldx[InfillGeoSpacingMode] 策略A：严格固定，尾隙留白
+    FixedSpacingDistribute =2 // ldx[InfillGeoSpacingMode] 策略B：基准固定，尾隙均分铺满
+};
+
 enum class ArcFittingType {
     Disabled,
     EmitCenter
@@ -689,6 +705,8 @@ PRINT_CONFIG_CLASS_DEFINE(
     ((ConfigOptionBool,                 extra_perimeters))
     ((ConfigOptionBool,                 extra_perimeters_on_overhangs))
     ((ConfigOptionFloat,                fill_angle))
+    // ldx[infill_geo_spacing_mode] add  zhe definition of zhe data type for custom infill spaceing mode 
+    ((ConfigOptionEnum<InfillGeoSpacingMode>,  infill_geo_spacing_mode))
     //ldx[fill_angles] add  zhe definition of zhe data type for fill_angles 
     ((ConfigOptionString,               fill_angles))
     // ldx[line_spacing] add  zhe definition of zhe data type for line_spacing 

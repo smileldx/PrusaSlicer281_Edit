@@ -1501,10 +1501,12 @@ void TabPrint::build()
         optgroup->append_single_option_line("fill_angles", category_path + "fill-angles");
         //ldx[line_spacing] add line_spacing used by load control
         optgroup->append_single_option_line("line_spacing", category_path + "line-spacing");
-        // ldx[flow] add flow used by load control
+        // ldx[fill_flow] add flow used by load control
         optgroup->append_single_option_line("fill_flow", category_path + "fill-flow");
-        // ldx[flow] add forced_reversal used by load control
+        // ldx[forced_reversal] add forced_reversal used by load control
         optgroup->append_single_option_line("forced_reversal", category_path + "forced-reversal");
+        // ldx[infill_geo_spacing_mode] add spacing mode selector
+        optgroup->append_single_option_line("infill_geo_spacing_mode", category_path + "infill-geo-spacing-mode");
         optgroup->append_single_option_line("solid_infill_below_area", category_path + "solid-infill-threshold-area");
         optgroup->append_single_option_line("bridge_angle");
         optgroup->append_single_option_line("only_retract_when_crossing_perimeters");

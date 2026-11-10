@@ -88,6 +88,12 @@ struct FillParams
 
     // For infills that produce closed loops to force printing those loops clockwise.
     bool        prefer_clockwise_movements { false };
+
+    // ldx[infill_geo_spacing_mode] Controls how line_spacing is applied to geometry:
+    //   Original(0)              : default PrusaSlicer behaviour (spacing from flow)
+    //   StrictFixedSpacing(1)    : exact line_spacing, no contour shrink, no adjust, tail gap left blank
+    //   FixedSpacingDistribute(2): exact line_spacing, no contour shrink, tail gap evenly distributed
+    int         geo_spacing_mode   { 0 };
 };
 static_assert(IsTriviallyCopyable<FillParams>::value, "FillParams class is not POD (and it should be - see constructor).");
 
