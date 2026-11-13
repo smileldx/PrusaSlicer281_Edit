@@ -156,7 +156,18 @@ void Fill3DHoneycomb::_fill_surface_single(
 {
     // no rotation is supported for this infill pattern
     BoundingBox bb = expolygon.contour.bounding_box();
-    coord_t     distance = coord_t(scale_(this->spacing) / params.density);
+    const bool  use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    //ldx[line_spacing] When custom spacing is active, use line_spacing; otherwise fall back to Original density-based spacing.
+    coord_t     distance = use_custom_spacing ?
+        coord_t(scale_(this->line_spacing)) :
+        coord_t(scale_(this->spacing) / params.density);
+    if (distance <= 0)
+        return;
+    if (use_custom_spacing && params.geo_spacing_mode == 2) {
+        distance = this->_adjust_solid_spacing(bb.size()(0), distance);
+        if (distance <= 0)
+            return;
+    }
 
     // align bounding box to a multiple of our honeycomb grid module
     // (a module is 2*$distance since one $distance half-module is 

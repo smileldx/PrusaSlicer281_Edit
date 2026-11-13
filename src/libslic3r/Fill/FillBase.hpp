@@ -164,6 +164,8 @@ protected:
         overlap(0.),
         // Initial angle is undefined.
         angle(FLT_MAX),
+        // ldx[line_spacing] Ensure line_spacing is always zero-initialized.
+        line_spacing(0.f),
         link_max_length(0),
         loop_clipping(0),
         // The initial bounding box is empty, therefore undefined.

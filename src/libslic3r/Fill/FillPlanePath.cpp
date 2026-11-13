@@ -86,9 +86,10 @@ void FillPlanePath::_fill_surface_single(
 {
     expolygon.rotate(-direction.first);
 
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
     //FIXME Vojtech: We are not sure whether the user expects the fill patterns on visible surfaces to be aligned across all the islands of a single layer.
     // One may align for this->centered() to align the patterns for Archimedean Chords and Octagram Spiral patterns.
-    const bool align = params.density < 0.995;
+    const bool align = !empty(this->bounding_box) && (use_custom_spacing || params.density < 0.995);
 
     BoundingBox snug_bounding_box = get_extents(expolygon).inflated(SCALED_EPSILON);
 
@@ -108,7 +109,17 @@ void FillPlanePath::_fill_surface_single(
 
     Polyline polyline;
     {
-        auto distance_between_lines = scaled<double>(this->spacing) / params.density;
+        //ldx[line_spacing] When custom spacing is active, use line_spacing; otherwise fall back to Original density-based spacing.
+        double distance_between_lines = use_custom_spacing ?
+            scaled<double>(this->line_spacing) :
+            (scaled<double>(this->spacing) / params.density);
+        if (distance_between_lines <= 0.)
+            return;
+        if (use_custom_spacing && params.geo_spacing_mode == 2) {
+            coord_t adjusted = this->_adjust_solid_spacing(snug_bounding_box.size().x(), coord_t(distance_between_lines));
+            if (adjusted > 0)
+                distance_between_lines = double(adjusted);
+        }
         auto min_x = coord_t(ceil(coordf_t(bounding_box.min.x()) / distance_between_lines));
         auto min_y = coord_t(ceil(coordf_t(bounding_box.min.y()) / distance_between_lines));
         auto max_x = coord_t(ceil(coordf_t(bounding_box.max.x()) / distance_between_lines));
@@ -131,7 +142,7 @@ void FillPlanePath::_fill_surface_single(
     if (polyline.size() >= 2) {
         Polylines polylines = intersection_pl(polyline, expolygon);
         Polylines chained;
-        if (params.dont_connect() || params.density > 0.5 || polylines.size() <= 1)
+        if (params.dont_connect() || (!use_custom_spacing && params.density > 0.5) || polylines.size() <= 1)
             chained = chain_polylines(std::move(polylines));
         else
             connect_infill(std::move(polylines), expolygon, chained, this->spacing, params);

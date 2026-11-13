@@ -28,8 +28,14 @@ namespace Slic3r {
 class FillHoneycomb : public Fill
 {
 public:
+    // ldx[修改蜂窝换向填充] Toggle between same-direction alignment (true) and alternating 60-degree interlocking honeycomb infill (false).
+    static constexpr bool SameDirectionHoneycomb = false;
+
     ~FillHoneycomb() override {}
     bool is_self_crossing() override { return false; }
+
+    // ldx[修改蜂窝换向填充] Apply per-layer 0/60/120 deg rotation when SameDirectionHoneycomb is false, supporting single-angle fill_angles input.
+    std::pair<float, Point> _infill_direction(const Surface *surface) const override;
 
 protected:
     Fill* clone() const override { return new FillHoneycomb(*this); };
@@ -43,14 +49,22 @@ protected:
 	// Caching the 
 	struct CacheID 
 	{
-		CacheID(float adensity, coordf_t aspacing) : 
-			density(adensity), spacing(aspacing) {}
-		float		density;
-		coordf_t	spacing;
-		bool operator<(const CacheID &other) const 
-			{ return (density < other.density) || (density == other.density && spacing < other.spacing); }
-		bool operator==(const CacheID &other) const 
-			{ return density == other.density && spacing == other.spacing; }
+		//ldx[line_spacing] Include resolved distance, min_spacing and custom mode flag in CacheID so mode/line_spacing/adjust changes don't reuse stale geometry.
+		CacheID(coord_t adistance, coord_t amin_spacing, bool acustom) :
+			distance(adistance), min_spacing(amin_spacing), use_custom_spacing(acustom) {}
+		coord_t		distance;
+		coord_t		min_spacing;
+		bool		use_custom_spacing;
+		bool operator<(const CacheID &other) const
+		{
+			if (distance != other.distance)
+				return distance < other.distance;
+			if (min_spacing != other.min_spacing)
+				return min_spacing < other.min_spacing;
+			return int(use_custom_spacing) < int(other.use_custom_spacing);
+		}
+		bool operator==(const CacheID &other) const
+			{ return distance == other.distance && min_spacing == other.min_spacing && use_custom_spacing == other.use_custom_spacing; }
 	};
 	struct CacheData
 	{

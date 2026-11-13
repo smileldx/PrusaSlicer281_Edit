@@ -302,6 +302,7 @@ std::pair<double, double> adaptive_fill_line_spacing(const PrintObject &print_ob
         Tristate        has_support_infill;
         double          density;
         double          extrusion_width;
+        double          custom_line_spacing;
     };
     std::vector<RegionFillData> region_fill_data;
     region_fill_data.reserve(print_object.num_printing_regions());
@@ -315,11 +316,14 @@ std::pair<double, double> adaptive_fill_line_spacing(const PrintObject &print_ob
         bool                     has_adaptive_infill    = nonempty && config.fill_pattern == ipAdaptiveCubic;
         bool                     has_support_infill     = nonempty && config.fill_pattern == ipSupportCubic;
         double                   infill_extrusion_width = config.infill_extrusion_width.percent ? default_infill_extrusion_width * 0.01 * config.infill_extrusion_width : config.infill_extrusion_width;
+        //ldx[line_spacing] Use custom line_spacing for octree resolution when custom geo spacing mode is enabled.
+        double                   custom_line_spacing    = (config.infill_geo_spacing_mode.value != InfillGeoSpacingMode::Original && config.line_spacing.value > 0.) ? config.line_spacing.value : 0.;
         region_fill_data.push_back(RegionFillData({
             has_adaptive_infill ? Tristate::Maybe : Tristate::No,
             has_support_infill ? Tristate::Maybe : Tristate::No,
             config.fill_density,
-            infill_extrusion_width != 0. ? infill_extrusion_width : default_infill_extrusion_width
+            infill_extrusion_width != 0. ? infill_extrusion_width : default_infill_extrusion_width,
+            custom_line_spacing
         }));
         build_octree |= has_adaptive_infill || has_support_infill;
     }
@@ -337,19 +341,33 @@ std::pair<double, double> adaptive_fill_line_spacing(const PrintObject &print_ob
 
         double  adaptive_fill_density           = 0.;
         double  adaptive_infill_extrusion_width = 0.;
+        double  adaptive_custom_spacing_sum     = 0.;
         int     adaptive_cnt                    = 0;
+        int     adaptive_custom_cnt             = 0;
         double  support_fill_density            = 0.;
         double  support_infill_extrusion_width  = 0.;
+        double  support_custom_spacing_sum      = 0.;
         int     support_cnt                     = 0;
+        int     support_custom_cnt              = 0;
 
         for (const RegionFillData &rd : region_fill_data) {
             if (rd.has_adaptive_infill == Tristate::Yes) {
                 adaptive_fill_density           += rd.density;
                 adaptive_infill_extrusion_width += rd.extrusion_width;
+                adaptive_custom_spacing_sum     += (rd.custom_line_spacing > 0.) ?
+                    rd.custom_line_spacing :
+                    (rd.extrusion_width / ((rd.density / 100.0f) * 0.333333333f));
+                if (rd.custom_line_spacing > 0.)
+                    ++ adaptive_custom_cnt;
                 ++ adaptive_cnt;
             } else if (rd.has_support_infill == Tristate::Yes) {
                 support_fill_density           += rd.density;
                 support_infill_extrusion_width += rd.extrusion_width;
+                support_custom_spacing_sum     += (rd.custom_line_spacing > 0.) ?
+                    rd.custom_line_spacing :
+                    (rd.extrusion_width / ((rd.density / 100.0f) * 0.333333333f));
+                if (rd.custom_line_spacing > 0.)
+                    ++ support_custom_cnt;
                 ++ support_cnt;
             }
         }
@@ -362,8 +380,12 @@ std::pair<double, double> adaptive_fill_line_spacing(const PrintObject &print_ob
             } else
                 return 0.;
         };
-        adaptive_line_spacing = to_line_spacing(adaptive_cnt, adaptive_fill_density, adaptive_infill_extrusion_width);
-        support_line_spacing  = to_line_spacing(support_cnt, support_fill_density, support_infill_extrusion_width);
+        adaptive_line_spacing = (adaptive_custom_cnt > 0 && adaptive_cnt > 0) ?
+            (adaptive_custom_spacing_sum / double(adaptive_cnt)) :
+            to_line_spacing(adaptive_cnt, adaptive_fill_density, adaptive_infill_extrusion_width);
+        support_line_spacing  = (support_custom_cnt > 0 && support_cnt > 0) ?
+            (support_custom_spacing_sum / double(support_cnt)) :
+            to_line_spacing(support_cnt, support_fill_density, support_infill_extrusion_width);
     }
 
     return std::make_pair(adaptive_line_spacing, support_line_spacing);

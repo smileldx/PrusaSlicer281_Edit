@@ -42,7 +42,23 @@ Generator::Generator(const PrintObject &print_object, const coordf_t fill_densit
 {
     const PrintConfig         &print_config         = print_object.print()->config();
     const PrintObjectConfig   &object_config        = print_object.config();
-    const PrintRegionConfig   &region_config        = print_object.shared_regions()->all_regions.front()->config();
+    const PrintRegionConfig   *lightning_region_cfg = nullptr;
+    bool                       has_custom_spacing   = false;
+    double                     custom_spacing_sum   = 0.;
+    size_t                     custom_spacing_cnt   = 0;
+    for (size_t region_id = 0; region_id < print_object.num_printing_regions(); ++region_id) {
+        const PrintRegionConfig &cfg = print_object.printing_region(region_id).config();
+        if (cfg.fill_density > 0 && cfg.fill_pattern == ipLightning) {
+            if (!lightning_region_cfg)
+                lightning_region_cfg = &cfg;
+            if (cfg.infill_geo_spacing_mode.value != InfillGeoSpacingMode::Original && cfg.line_spacing.value > 0.) {
+                has_custom_spacing = true;
+                custom_spacing_sum += cfg.line_spacing.value;
+                ++custom_spacing_cnt;
+            }
+        }
+    }
+    const PrintRegionConfig   &region_config        = lightning_region_cfg ? *lightning_region_cfg : print_object.shared_regions()->all_regions.front()->config();
     const std::vector<double> &nozzle_diameters     = print_config.nozzle_diameter.values;
     double                     max_nozzle_diameter  = *std::max_element(nozzle_diameters.begin(), nozzle_diameters.end());
 //    const int                  infill_extruder      = region_config.infill_extruder.value;
@@ -53,7 +69,10 @@ Generator::Generator(const PrintObject &print_object, const coordf_t fill_densit
     m_infill_extrusion_width = scaled<float>(region_config.infill_extrusion_width.percent ? default_infill_extrusion_width * 0.01 * region_config.infill_extrusion_width :
                                              region_config.infill_extrusion_width != 0.   ? region_config.infill_extrusion_width :
                                                                                             default_infill_extrusion_width);
-    m_supporting_radius      = coord_t(m_infill_extrusion_width * 100. / fill_density);
+    //ldx[line_spacing] In custom spacing mode, use line_spacing directly as supporting radius (clamped so DistanceField::m_cell_size >= SCALED_EPSILON).
+    m_supporting_radius      = has_custom_spacing ?
+        std::max<coord_t>(coord_t(6 * SCALED_EPSILON), coord_t(scale_(custom_spacing_sum / double(custom_spacing_cnt)))) :
+        coord_t(m_infill_extrusion_width * 100. / fill_density);
 
     const double lightning_infill_overhang_angle      = M_PI / 4; // 45 degrees
     const double lightning_infill_prune_angle         = M_PI / 4; // 45 degrees

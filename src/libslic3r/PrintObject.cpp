@@ -816,23 +816,23 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "infill_extruder"
             || opt_key == "solid_infill_extruder"
             || opt_key == "infill_extrusion_width"
-            || opt_key == "bridge_angle") {
+            || opt_key == "bridge_angle"
+            //ldx[fill_angles] add (Multi layer filling angle)
+            || opt_key == "fill_angles"
+            //ldx[line_spacing] add (Fill line spacing) - needed in posPrepareInfill for AdaptiveCubic octree, Lightning generator and bridge anchoring
+            || opt_key == "line_spacing"
+            //ldx[infill_geo_spacing_mode] add spacing mode invalidation in posPrepareInfill
+            || opt_key == "infill_geo_spacing_mode") {
             steps.emplace_back(posPrepareInfill);
         } else if (
                opt_key == "top_fill_pattern"
             || opt_key == "bottom_fill_pattern"
             || opt_key == "external_fill_link_max_length"
-            || opt_key == "fill_angle" 
-            //ldx[fill_angles] add (Multi layer filling angle)
-            || opt_key == "fill_angles"
-            //ldx[line_spacing] add (Fill line spacing)
-            || opt_key == "line_spacing"
+            || opt_key == "fill_angle"
              //ldx[flow] add zhe judge dont know zhe meaning
             || opt_key == "fill_flow"
             //ldx[flow] add zhe judge dont know zhe meaning
             || opt_key == "forced_reversal"
-            //ldx[infill_geo_spacing_mode] add spacing mode invalidation
-            || opt_key == "infill_geo_spacing_mode"
             || opt_key == "infill_anchor"
             || opt_key == "infill_anchor_max"
             || opt_key == "top_infill_extrusion_width"
@@ -902,6 +902,14 @@ bool PrintObject::invalidate_state_by_config_options(
             || opt_key == "perimeter_speed") {
             invalidated |= m_print->invalidate_step(psWipeTower);
             invalidated |= m_print->invalidate_step(psGCodeExport);
+            // ldx[fill_flow] When fill_flow > 0, flow_mm3_per_mm = fill_flow / infill_speed is computed in posInfill.
+            if (opt_key == "infill_speed") {
+                for (size_t i = 0; i < this->num_printing_regions(); ++i)
+                    if (this->printing_region(i).config().fill_flow.value > 0.) {
+                        steps.emplace_back(posInfill);
+                        break;
+                    }
+            }
         } else if (
                opt_key == "enable_dynamic_overhang_speeds"
             || opt_key == "overhang_speed_0"

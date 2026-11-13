@@ -19,8 +19,11 @@ void Filler::_fill_surface_single(
     ExPolygon                      expolygon,
     Polylines                     &polylines_out)
 {
-    const Layer &layer      = generator->getTreesForLayer(this->layer_id);
-    Polylines    fill_lines = layer.convertToLines(to_polygons(expolygon), scaled<coord_t>(0.5 * this->spacing - this->overlap));
+    const Layer  &layer              = generator->getTreesForLayer(this->layer_id);
+    const bool    use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    //ldx[line_spacing] In custom spacing mode, keep full branch endpoints without overlapping retraction trim.
+    const coord_t line_overlap       = use_custom_spacing ? 0 : scaled<coord_t>(0.5 * this->spacing - this->overlap);
+    Polylines     fill_lines         = layer.convertToLines(to_polygons(expolygon), line_overlap);
 
     if (params.dont_connect() || fill_lines.size() <= 1) {
         append(polylines_out, chain_polylines(std::move(fill_lines)));

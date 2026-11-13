@@ -2835,6 +2835,8 @@ bool FillRectilinear::fill_surface_by_lines(const Surface *surface, const FillPa
         assert(params.density > 0.0001f && params.density <= 1.f);
         line_spacing = coord_t(scale_(this->spacing) / params.density);
     }
+    if (line_spacing <= 0)
+        return true;
 
     // On the polygons of poly_with_offset, the infill lines will be connected.
     // ldx[infill_geo_spacing_mode] Plan B: snake-like continuous infill reaching the exact model boundary.
@@ -3042,7 +3044,8 @@ void make_fill_lines(const ExPolygonWithOffset &poly_with_offset, Point refpt, d
 bool FillRectilinear::fill_surface_by_multilines(const Surface *surface, FillParams params, const std::initializer_list<SweepParams> &sweep_params, Polylines &polylines_out)
 {
     assert(sweep_params.size() > 1);
-    assert(! params.full_infill());
+    if (params.geo_spacing_mode == 0)
+        assert(! params.full_infill());
     params.density /= double(sweep_params.size());
     // ldx[line_spacing] In custom spacing mode density is not used for geometry; skip assert.
     if (params.geo_spacing_mode == 0)
@@ -3066,6 +3069,8 @@ bool FillRectilinear::fill_surface_by_multilines(const Surface *surface, FillPar
     } else {
         line_spacing = coord_t(scale_(this->spacing) / params.density);
     }
+    if (line_spacing <= 0)
+        return true;
     std::pair<float, Point> rotate_vector = this->_infill_direction(surface);
     for (const SweepParams &sweep : sweep_params) {
         // Rotate polygons so that we can work with vertical lines here
@@ -3135,14 +3140,17 @@ Polylines FillTriangles::fill_surface(const Surface *surface, const FillParams &
 
 Polylines FillStars::fill_surface(const Surface *surface, const FillParams &params, bool forcereversal)
 {
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    //ldx[line_spacing] for Stars (fix Original fallback)
+    const float star_shift = use_custom_spacing ?
+        float(0.5 * this->line_spacing) :
+        float((3. / 2.) * this->spacing / params.density);
     Polylines polylines_out;
     if (! this->fill_surface_by_multilines(
             surface, params,
             {{0.f, 0.f},
              {float(M_PI / 3.), 0.f},
-             //ldx[line_spacing] for Stars
-             {float(2. * M_PI / 3.), float((3. / 2.) * this->line_spacing)}},
-           // { { 0.f, 0.f }, { float(M_PI / 3.), 0.f }, { float(2. * M_PI / 3.), float((3./2.) * this->spacing / params.density) } },
+             {float(2. * M_PI / 3.), star_shift}},
             polylines_out))
         BOOST_LOG_TRIVIAL(error) << "FillStars::fill_surface() failed to fill a region.";
     return polylines_out;

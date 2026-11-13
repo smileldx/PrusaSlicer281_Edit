@@ -119,6 +119,11 @@ struct SurfaceFillParams
 		RETURN_COMPARE_NON_EQUAL(spacing);
 //		RETURN_COMPARE_NON_EQUAL(overlap);
 		RETURN_COMPARE_NON_EQUAL(angle);
+		RETURN_COMPARE_NON_EQUAL(angles);
+		RETURN_COMPARE_NON_EQUAL(line_spacing);
+		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, forced_reversal);
+		RETURN_COMPARE_NON_EQUAL(geo_spacing_mode);
+		RETURN_COMPARE_NON_EQUAL(fill_flow);
 		RETURN_COMPARE_NON_EQUAL(density);
 //		RETURN_COMPARE_NON_EQUAL_TYPED(unsigned, dont_adjust);
 		RETURN_COMPARE_NON_EQUAL(anchor_length);
@@ -136,6 +141,11 @@ struct SurfaceFillParams
 				this->spacing 			== rhs.spacing 			&&
 //				this->overlap 			== rhs.overlap 			&&
 				this->angle   			== rhs.angle   			&&
+				this->angles  			== rhs.angles  			&&
+				this->line_spacing      == rhs.line_spacing     &&
+				this->forced_reversal   == rhs.forced_reversal  &&
+				this->geo_spacing_mode  == rhs.geo_spacing_mode &&
+				this->fill_flow         == rhs.fill_flow        &&
 				this->bridge   			== rhs.bridge   		&&
 //				this->bridge_angle 		== rhs.bridge_angle		&&
 				this->density   		== rhs.density   		&&
@@ -166,8 +176,17 @@ std::vector<float> parseStringToFloatVector(const std::string &input) {
     std::string segment;
 
     while (std::getline(ss, segment, ',')) {
+        // ldx[修改蜂窝换向填充] Trim whitespace and optional brackets so single-angle inputs like "0" or "[0]" parse cleanly.
+        size_t begin = 0;
+        while (begin < segment.size() && (segment[begin] == ' ' || segment[begin] == '\t' || segment[begin] == '\r' || segment[begin] == '\n' || segment[begin] == '[' || segment[begin] == ']'))
+            ++ begin;
+        size_t end = segment.size();
+        while (end > begin && (segment[end - 1] == ' ' || segment[end - 1] == '\t' || segment[end - 1] == '\r' || segment[end - 1] == '\n' || segment[end - 1] == '[' || segment[end - 1] == ']'))
+            -- end;
+        if (begin == end)
+            continue;
         try {
-            float value = std::stof(segment);
+            float value = std::stof(segment.substr(begin, end - begin));
             result.push_back(value);
         } catch (const std::exception &e) {
             // 处理转换失败的情况
@@ -221,15 +240,24 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
                 //ldx[fill_angles] add string to vector<float>
 				if (!region_config.fill_angles.empty()) {
                     params.angles = parseStringToFloatVector(region_config.fill_angles);
-				}
-                // ldx[line_spacing] transfer value
-                params.line_spacing = region_config.line_spacing.value;
-                // ldx[forced_reversal] transfer value
-                params.forced_reversal = region_config.forced_reversal.value;
-                // ldx[infill_geo_spacing_mode] transfer value
-                params.geo_spacing_mode = static_cast<int>(region_config.infill_geo_spacing_mode.value);
-                // ldx[fill_flow] transfer user volumetric flow; 0 = auto
-                params.fill_flow = (region_config.fill_flow.value > 0.f) ? float(region_config.fill_flow.value) : 0.f;
+				} else {
+                    params.angles.clear();
+                }
+                if (!surface.is_solid() && !is_bridge) {
+                    // ldx[line_spacing] transfer value (only for internal sparse infill)
+                    params.line_spacing = region_config.line_spacing.value;
+                    // ldx[forced_reversal] transfer value
+                    params.forced_reversal = region_config.forced_reversal.value;
+                    // ldx[infill_geo_spacing_mode] transfer value
+                    params.geo_spacing_mode = static_cast<int>(region_config.infill_geo_spacing_mode.value);
+                    // ldx[fill_flow] transfer user volumetric flow; 0 = auto
+                    params.fill_flow = (region_config.fill_flow.value > 0.f) ? float(region_config.fill_flow.value) : 0.f;
+                } else {
+                    params.line_spacing     = 0.f;
+                    params.forced_reversal  = false;
+                    params.geo_spacing_mode = 0;
+                    params.fill_flow        = 0.f;
+                }
 		        // Calculate the actual flow we'll be using for this infill.
 		        params.bridge = is_bridge || Fill::use_bridge_flow(params.pattern);
 				params.flow   = params.bridge ?
@@ -363,6 +391,10 @@ std::vector<SurfaceFill> group_fills(const Layer &layer)
 	            params.density 		 = 100.f;
 		        params.extrusion_role = ExtrusionRole::InternalInfill;
 		        params.angle 		= float(Geometry::deg2rad(layerm.region().config().fill_angle.value));
+		        params.line_spacing     = 0.f;
+		        params.forced_reversal  = false;
+		        params.geo_spacing_mode = 0;
+		        params.fill_flow        = 0.f;
 		        // calculate the actual flow we'll be using for this infill
 				params.flow = layerm.flow(frSolidInfill);
 		        params.spacing = params.flow.spacing();	        
@@ -587,7 +619,9 @@ void Layer::make_fills(FillAdaptive::Octree* adaptive_fill_octree, FillAdaptive:
         params.anchor_length              = surface_fill.params.anchor_length;
         params.anchor_length_max          = surface_fill.params.anchor_length_max;
         params.resolution                 = resolution;
-        params.use_arachne                = (perimeter_generator == PerimeterGeneratorType::Arachne && surface_fill.params.pattern == ipConcentric) || surface_fill.params.pattern == ipEnsuring;
+        // ldx[line_spacing] Disable Arachne path wrapper for Concentric when custom line_spacing or fill_flow is active so flow override applies cleanly.
+        const bool custom_infill_active   = (surface_fill.params.fill_flow > 0.f) || (surface_fill.params.line_spacing > 0.f && surface_fill.params.geo_spacing_mode != 0);
+        params.use_arachne                = (!custom_infill_active && perimeter_generator == PerimeterGeneratorType::Arachne && surface_fill.params.pattern == ipConcentric) || surface_fill.params.pattern == ipEnsuring;
         params.layer_height               = layerm.layer()->height;
         params.prefer_clockwise_movements = this->object()->print()->config().prefer_clockwise_movements;
         // ldx[infill_geo_spacing_mode] pass spacing mode to fill engine
@@ -752,7 +786,19 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
         f->set_bounding_box(bbox);
         f->layer_id = this->id() - this->object()->get_layer(0)->id(); // We need to subtract raft layers.
         f->z        = this->print_z;
-        f->angle    = surface_fill.params.angle;
+        // ldx[fill_angles] Use custom per-layer angles if configured (matching make_fills).
+        int len = int(surface_fill.params.angles.size());
+        bool force_reversal = false;
+        if (len > 0) {
+            if (surface_fill.params.forced_reversal && len > 1)
+                force_reversal = (f->layer_id / len) % 2 > 0;
+            int angle_index = int(f->layer_id % len);
+            f->angle = float(Geometry::deg2rad(surface_fill.params.angles[angle_index]));
+        } else {
+            f->angle = surface_fill.params.angle;
+        }
+        // ldx[line_spacing] Passing custom spacing parameters to anchoring infill generator.
+        f->line_spacing        = surface_fill.params.line_spacing;
         f->adapt_fill_octree   = (surface_fill.params.pattern == ipSupportCubic) ? support_fill_octree : adaptive_fill_octree;
         f->print_config        = &this->object()->print()->config();
         f->print_object_config = &this->object()->config();
@@ -788,13 +834,15 @@ Polylines Layer::generate_sparse_infill_polylines_for_anchoring(FillAdaptive::Oc
         params.resolution        = resolution;
         params.use_arachne       = false;
         params.layer_height      = layerm.layer()->height;
+        // ldx[infill_geo_spacing_mode] pass spacing mode to anchoring infill generator
+        params.geo_spacing_mode  = surface_fill.params.geo_spacing_mode;
 
         for (ExPolygon &expoly : surface_fill.expolygons) {
             // Spacing is modified by the filler to indicate adjustments. Reset it for each expolygon.
             f->spacing                     = surface_fill.params.spacing;
             surface_fill.surface.expolygon = std::move(expoly);
             try {
-                Polylines polylines = f->fill_surface(&surface_fill.surface, params);
+                Polylines polylines = f->fill_surface(&surface_fill.surface, params, force_reversal);
                 sparse_infill_polylines.insert(sparse_infill_polylines.end(), polylines.begin(), polylines.end());
             } catch (InfillFailedException &) {}
         }

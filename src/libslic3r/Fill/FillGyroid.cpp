@@ -170,10 +170,34 @@ void FillGyroid::_fill_surface_single(
         expolygon.rotate(-infill_angle);
 
     BoundingBox bb = expolygon.contour.bounding_box();
-    // Density adjusted to have a good %of weight.
-    double      density_adjusted = std::max(0., params.density * DensityAdjust);
-    // Distance between the gyroid waves in scaled coordinates.
-    coord_t     distance = coord_t(scale_(this->spacing) / density_adjusted);
+    const bool  use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
+    double      density_adjusted   = 0.;
+    double      base_spacing       = this->spacing;
+    coord_t     distance           = 0;
+    if (use_custom_spacing) {
+        //ldx[line_spacing] Adjacent gyroid waves in make_gyroid_waves() are separated by M_PI radians,
+        // so scaleFactor = wave_pitch / M_PI makes physical wave-to-wave spacing equal line_spacing.
+        coord_t wave_pitch = coord_t(scale_(this->line_spacing));
+        if (wave_pitch <= 0)
+            return;
+        if (params.geo_spacing_mode == 2) {
+            wave_pitch = this->_adjust_solid_spacing(bb.size()(0), wave_pitch);
+            if (wave_pitch <= 0)
+                return;
+        }
+        density_adjusted = M_PI;
+        base_spacing     = unscale<double>(wave_pitch);
+        distance         = coord_t(scale_(base_spacing) / density_adjusted);
+    } else {
+        // Density adjusted to have a good %of weight.
+        density_adjusted = std::max(0., params.density * DensityAdjust);
+        if (density_adjusted <= 0.)
+            return;
+        // Distance between the gyroid waves in scaled coordinates.
+        distance = coord_t(scale_(this->spacing) / density_adjusted);
+    }
+    if (distance <= 0)
+        return;
 
     // align bounding box to a multiple of our grid module
     bb.merge(align_to_grid(bb.min, Point(2*M_PI*distance, 2*M_PI*distance)));
@@ -182,7 +206,7 @@ void FillGyroid::_fill_surface_single(
     Polylines polylines = make_gyroid_waves(
         scale_(this->z),
         density_adjusted,
-        this->spacing,
+        base_spacing,
         ceil(bb.size()(0) / distance) + 1.,
         ceil(bb.size()(1) / distance) + 1.);
 
@@ -195,7 +219,9 @@ void FillGyroid::_fill_surface_single(
     if (! polylines.empty()) {
 		// Remove very small bits, but be careful to not remove infill lines connecting thin walls!
         // The infill perimeter lines should be separated by around a single infill line width.
-        const double minlength = scale_(0.8 * this->spacing);
+        const double minlength = use_custom_spacing ?
+            std::min(scale_(0.05), 0.25 * M_PI * double(distance)) :
+            scale_(0.8 * this->spacing);
 		polylines.erase(
 			std::remove_if(polylines.begin(), polylines.end(), [minlength](const Polyline &pl) { return pl.length() < minlength; }),
 			polylines.end());

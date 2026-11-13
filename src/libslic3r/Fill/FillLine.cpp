@@ -27,17 +27,25 @@ void FillLine::_fill_surface_single(
     // rotate polygons so that we can work with vertical lines here
     expolygon.rotate(- direction.first);
 
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
     this->_min_spacing = scale_(this->spacing);
-    assert(params.density > 0.0001f && params.density <= 1.f);
-    //ldx [line_spacing]
-    //this->_line_spacing = coord_t(coordf_t(this->_min_spacing) / params.density);
-    this->_line_spacing = coord_t(scale_(this->line_spacing)); 
-    this->_diagonal_distance = this->_line_spacing * 2;
-    this->_line_oscillation = this->_line_spacing - this->_min_spacing; // only for Line infill
+    if (!use_custom_spacing)
+        assert(params.density > 0.0001f && params.density <= 1.f);
+    //ldx[line_spacing] When custom spacing is active, use line_spacing; otherwise fall back to Original density-based spacing.
+    this->_line_spacing = use_custom_spacing ?
+        coord_t(scale_(this->line_spacing)) :
+        coord_t(coordf_t(this->_min_spacing) / params.density);
+    if (this->_line_spacing <= 0)
+        return;
+
     BoundingBox bounding_box = expolygon.contour.bounding_box();
     
-    // define flow spacing according to requested density
-    if (params.density > 0.9999f && !params.dont_adjust) {
+    // define flow spacing according to requested density / geo_spacing_mode
+    if (use_custom_spacing && params.geo_spacing_mode == 2) {
+        this->_line_spacing = this->_adjust_solid_spacing(bounding_box.size()(0), this->_line_spacing);
+    } else if (use_custom_spacing && params.geo_spacing_mode == 1) {
+        // StrictFixedSpacing: keep exact _line_spacing, leave tail gap blank
+    } else if (params.density > 0.9999f && !params.dont_adjust) {
         this->_line_spacing = this->_adjust_solid_spacing(bounding_box.size()(0), this->_line_spacing);
         this->spacing = unscale<double>(this->_line_spacing);
     } else {
@@ -48,6 +56,8 @@ void FillLine::_fill_surface_single(
             Point(this->_line_spacing, this->_line_spacing), 
             direction.second.rotated(- direction.first)));
     }
+    this->_diagonal_distance = this->_line_spacing * 2;
+    this->_line_oscillation = std::max<coord_t>(0, this->_line_spacing - this->_min_spacing); // only for Line infill
 
     // generate the basic pattern
     coord_t x_max = bounding_box.max(0) + SCALED_EPSILON;
@@ -70,19 +80,22 @@ void FillLine::_fill_surface_single(
         pts.push_back(it->a);
         pts.push_back(it->b);
     }
-    Polylines polylines = intersection_pl(polylines_src, offset(expolygon, scale_(0.02)));
+    // ldx[line_spacing] In custom spacing mode, keep clipping epsilon tiny and skip overlap protrusion.
+    Polylines polylines = intersection_pl(polylines_src, offset(expolygon, use_custom_spacing ? float(scale_(0.0001)) : float(scale_(0.02))));
 
     // FIXME Vojtech: This is only performed for horizontal lines, not for the vertical lines!
     const float INFILL_OVERLAP_OVER_SPACING = 0.3f;
     // How much to extend an infill path from expolygon outside?
-    coord_t extra = coord_t(floor(this->_min_spacing * INFILL_OVERLAP_OVER_SPACING + 0.5f));
-    for (Polylines::iterator it_polyline = polylines.begin(); it_polyline != polylines.end(); ++ it_polyline) {
-        Point *first_point = &it_polyline->points.front();
-        Point *last_point  = &it_polyline->points.back();
-        if (first_point->y() > last_point->y())
-            std::swap(first_point, last_point);
-        first_point->y() -= extra;
-        last_point->y() += extra;
+    coord_t extra = use_custom_spacing ? 0 : coord_t(floor(this->_min_spacing * INFILL_OVERLAP_OVER_SPACING + 0.5f));
+    if (extra > 0) {
+        for (Polylines::iterator it_polyline = polylines.begin(); it_polyline != polylines.end(); ++ it_polyline) {
+            Point *first_point = &it_polyline->points.front();
+            Point *last_point  = &it_polyline->points.back();
+            if (first_point->y() > last_point->y())
+                std::swap(first_point, last_point);
+            first_point->y() -= extra;
+            last_point->y() += extra;
+        }
     }
 
     size_t n_polylines_out_old = polylines_out.size();
@@ -92,7 +105,7 @@ void FillLine::_fill_surface_single(
         // offset the expolygon by max(min_spacing/2, extra)
         ExPolygon expolygon_off;
         {
-            ExPolygons expolygons_off = offset_ex(expolygon, this->_min_spacing/2);
+            ExPolygons expolygons_off = offset_ex(expolygon, use_custom_spacing ? float(scale_(0.001)) : float(this->_min_spacing/2));
             if (! expolygons_off.empty()) {
                 // When expanding a polygon, the number of islands could only shrink. Therefore the offset_ex shall generate exactly one expanded island for one input island.
                 assert(expolygons_off.size() == 1);

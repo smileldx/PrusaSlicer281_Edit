@@ -36,11 +36,22 @@ void FillConcentric::_fill_surface_single(
     // no rotation is supported for this infill pattern
     BoundingBox bounding_box = expolygon.contour.bounding_box();
 
+    const bool use_custom_spacing = (this->line_spacing > 0.f) && (params.geo_spacing_mode != 0);
     coord_t min_spacing = scaled<coord_t>(this->spacing);
-    //ldx[line_spacing] for Concentric
-    //coord_t distance    = coord_t(min_spacing / params.density);
-    coord_t distance = coord_t(scale_(this->line_spacing));
-    if (params.density > 0.9999f && !params.dont_adjust) {
+    //ldx[line_spacing] When custom spacing is active, use line_spacing; otherwise fall back to Original density-based spacing.
+    coord_t distance = use_custom_spacing ?
+        coord_t(scale_(this->line_spacing)) :
+        coord_t(min_spacing / params.density);
+    if (distance <= 0)
+        return;
+
+    if (use_custom_spacing) {
+        if (params.geo_spacing_mode == 2) {
+            distance = Slic3r::FillConcentric::_adjust_solid_spacing(bounding_box.size()(0), distance);
+            if (distance <= 0)
+                return;
+        }
+    } else if (params.density > 0.9999f && !params.dont_adjust) {
         distance      = Slic3r::FillConcentric::_adjust_solid_spacing(bounding_box.size()(0), distance);
         this->spacing = unscale<double>(distance);
     }
@@ -48,7 +59,10 @@ void FillConcentric::_fill_surface_single(
     Polygons   loops = to_polygons(expolygon);
     ExPolygons last { std::move(expolygon) };
     while (! last.empty()) {
-        last = offset2_ex(last, -(distance + min_spacing/2), +min_spacing/2);
+        //ldx[line_spacing] In custom spacing mode, offset directly by -distance so min_spacing does not clip or limit tight spacing.
+        last = use_custom_spacing ?
+            offset_ex(last, -float(distance)) :
+            offset2_ex(last, -(distance + min_spacing/2), +min_spacing/2);
         append(loops, to_polygons(last));
     }
 
